@@ -38,6 +38,7 @@ const writeJson = (filePath, data) => {
 
 const defaultGuildConfig = (guildId) => ({
   guildId,
+  guildOwnerId: null,
   name: 'Министерство юстиции Российской Федерации',
   city: 'Санкт-Петербург',
   currency: 'балл',
@@ -67,6 +68,7 @@ const getBalancePath = (guildId) => path.join(BALANCES_DIR, `${guildId}.json`);
 const ensureGuildConfig = (guildId) => {
   const filePath = getGuildConfigPath(guildId);
   const config = readJson(filePath, defaultGuildConfig(guildId));
+  config.guildOwnerId = config.guildOwnerId || null;
   config.access = { ...DEFAULT_ACCESS, ...(config.access || {}) };
   Object.keys(DEFAULT_ACCESS).forEach((key) => {
     config.access[key] = Array.isArray(config.access[key]) ? config.access[key] : [];
