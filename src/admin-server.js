@@ -19,6 +19,22 @@ const DEFAULT_HTML = path.join(ADMIN_DIR, 'index.html');
 const safeList = (value) => Array.isArray(value) ? value : [];
 const normalizeGuildId = (guildId) => String(guildId || process.env.GUILD_ID || 'server');
 
+function logSystemEvent(guildId, actorId, action, message, level = 'info') {
+  const cfg = ensureGuildConfig(guildId);
+  cfg.logs = safeList(cfg.logs);
+  cfg.logs.unshift({
+    id: Date.now().toString(),
+    guildId,
+    actorId: actorId || null,
+    action,
+    message,
+    level,
+    createdAt: new Date().toISOString()
+  });
+  cfg.logs = cfg.logs.slice(0, 200);
+  saveGuildConfig(guildId, cfg);
+}
+
 function getGuildOwnerId(guildId) {
   const cfg = ensureGuildConfig(guildId);
   return cfg.guildOwnerId || null;
@@ -122,6 +138,8 @@ app.post('/api/settings', (req, res) => {
   ];
 
   const updates = req.body || {};
+  const actorId = req.body.userId || req.body.actorId || req.query.userId || null;
+
   for (const key of allowed) {
     if (Object.prototype.hasOwnProperty.call(updates, key) && updates[key] !== undefined && updates[key] !== null) {
       cfg[key] = updates[key];
@@ -137,7 +155,14 @@ app.post('/api/settings', (req, res) => {
   }
 
   saveGuildConfig(guildId, cfg);
+  logSystemEvent(guildId, actorId, 'settings.update', 'Обновлены параметры ведомства', 'info');
   res.json({ success: true, settings: cfg });
+});
+
+app.get('/api/logs', (req, res) => {
+  const guildId = normalizeGuildId(req.query.guildId || process.env.GUILD_ID || 'server');
+  const cfg = ensureGuildConfig(guildId);
+  res.json(cfg.logs || []);
 });
 
 app.get('/api/access', (req, res) => {
@@ -171,6 +196,7 @@ app.post('/api/access', (req, res) => {
   access[role] = Array.from(new Set([...(safeList(access[role])), String(userId)]));
   cfg.access = access;
   saveGuildConfig(guildId, cfg);
+  logSystemEvent(guildId, actorId, 'access.assign', `Назначен доступ ${role} для пользователя ${userId}`, 'info');
 
   res.json({ success: true, access: cfg.access });
 });
@@ -204,6 +230,7 @@ app.post('/api/employees', (req, res) => {
     createdAt: new Date().toISOString()
   });
   saveGuildConfig(guildId, cfg);
+  logSystemEvent(guildId, actorId, 'employee.create', `Добавлен сотрудник ${fullName}`, 'info');
   res.json({ success: true, employees: cfg.employees });
 });
 
@@ -217,6 +244,7 @@ app.delete('/api/employees/:id', (req, res) => {
   const cfg = ensureGuildConfig(guildId);
   cfg.employees = safeList(cfg.employees).filter((employee) => String(employee.id) !== String(req.params.id));
   saveGuildConfig(guildId, cfg);
+  logSystemEvent(guildId, actorId, 'employee.delete', `Удалён сотрудник с идентификатором ${req.params.id}`, 'warning');
   res.json({ success: true, employees: cfg.employees });
 });
 
@@ -238,6 +266,7 @@ app.post('/api/departments', (req, res) => {
   if (!cfg.departments.some((item) => String(item.name).toLowerCase() === String(name).toLowerCase())) {
     cfg.departments.push({ id: Date.now().toString(), name, createdAt: new Date().toISOString() });
     saveGuildConfig(guildId, cfg);
+    logSystemEvent(guildId, actorId, 'department.create', `Создан департамент ${name}`, 'info');
   }
   res.json({ success: true, departments: cfg.departments });
 });
@@ -252,6 +281,7 @@ app.delete('/api/departments/:id', (req, res) => {
   const cfg = ensureGuildConfig(guildId);
   cfg.departments = safeList(cfg.departments).filter((item) => String(item.id) !== String(req.params.id));
   saveGuildConfig(guildId, cfg);
+  logSystemEvent(guildId, actorId, 'department.delete', `Удалён департамент с идентификатором ${req.params.id}`, 'warning');
   res.json({ success: true, departments: cfg.departments });
 });
 
@@ -273,6 +303,7 @@ app.post('/api/positions', (req, res) => {
   if (!cfg.positions.some((item) => String(item.name).toLowerCase() === String(name).toLowerCase())) {
     cfg.positions.push({ id: Date.now().toString(), name, createdAt: new Date().toISOString() });
     saveGuildConfig(guildId, cfg);
+    logSystemEvent(guildId, actorId, 'position.create', `Создана должность ${name}`, 'info');
   }
   res.json({ success: true, positions: cfg.positions });
 });
@@ -287,6 +318,7 @@ app.delete('/api/positions/:id', (req, res) => {
   const cfg = ensureGuildConfig(guildId);
   cfg.positions = safeList(cfg.positions).filter((item) => String(item.id) !== String(req.params.id));
   saveGuildConfig(guildId, cfg);
+  logSystemEvent(guildId, actorId, 'position.delete', `Удалена должность с идентификатором ${req.params.id}`, 'warning');
   res.json({ success: true, positions: cfg.positions });
 });
 
@@ -308,6 +340,7 @@ app.post('/api/ranks', (req, res) => {
   if (!cfg.ranks.some((item) => String(item.name).toLowerCase() === String(name).toLowerCase())) {
     cfg.ranks.push({ id: Date.now().toString(), name, createdAt: new Date().toISOString() });
     saveGuildConfig(guildId, cfg);
+    logSystemEvent(guildId, actorId, 'rank.create', `Создан чин ${name}`, 'info');
   }
   res.json({ success: true, ranks: cfg.ranks });
 });
@@ -322,6 +355,7 @@ app.delete('/api/ranks/:id', (req, res) => {
   const cfg = ensureGuildConfig(guildId);
   cfg.ranks = safeList(cfg.ranks).filter((item) => String(item.id) !== String(req.params.id));
   saveGuildConfig(guildId, cfg);
+  logSystemEvent(guildId, actorId, 'rank.delete', `Удалён чин с идентификатором ${req.params.id}`, 'warning');
   res.json({ success: true, ranks: cfg.ranks });
 });
 
@@ -342,6 +376,7 @@ app.post('/api/orders', (req, res) => {
   cfg.orders = safeList(cfg.orders);
   cfg.orders.push({ id: Date.now().toString(), title, text, author: author || 'Ministry', createdAt: new Date().toISOString() });
   saveGuildConfig(guildId, cfg);
+  logSystemEvent(guildId, actorId, 'order.create', `Зарегистрирован приказ ${title}`, 'info');
   res.json({ success: true, orders: cfg.orders });
 });
 
@@ -355,6 +390,7 @@ app.delete('/api/orders/:id', (req, res) => {
   const cfg = ensureGuildConfig(guildId);
   cfg.orders = safeList(cfg.orders).filter((item) => String(item.id) !== String(req.params.id));
   saveGuildConfig(guildId, cfg);
+  logSystemEvent(guildId, actorId, 'order.delete', `Удалён приказ с идентификатором ${req.params.id}`, 'warning');
   res.json({ success: true, orders: cfg.orders });
 });
 
@@ -382,6 +418,7 @@ app.post('/api/tickets', (req, res) => {
     createdAt: new Date().toISOString()
   });
   saveGuildConfig(guildId, cfg);
+  logSystemEvent(guildId, actorId, 'ticket.create', `Создано служебное обращение ${title}`, 'info');
   res.json({ success: true, tickets: cfg.tickets });
 });
 
@@ -395,6 +432,7 @@ app.delete('/api/tickets/:id', (req, res) => {
   const cfg = ensureGuildConfig(guildId);
   cfg.tickets = safeList(cfg.tickets).filter((item) => String(item.id) !== String(req.params.id));
   saveGuildConfig(guildId, cfg);
+  logSystemEvent(guildId, actorId, 'ticket.delete', `Удалено служебное обращение с идентификатором ${req.params.id}`, 'warning');
   res.json({ success: true, tickets: cfg.tickets });
 });
 
