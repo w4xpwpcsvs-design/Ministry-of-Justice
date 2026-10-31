@@ -53,19 +53,29 @@ const DEPARTMENTS = [
 const getSlashCommands = () => [
   new SlashCommandBuilder()
     .setName('minjust-help')
-    .setDescription('Справка по структуре и служебным командам Министерства'),
+    .setDescription('Служебная справка Минюста')
+    .addStringOption(option =>
+      option
+        .setName('topic')
+        .setDescription('Раздел справки')
+        .setRequired(false)
+        .addChoices(
+          { name: 'overview', value: 'overview' },
+          { name: 'commands', value: 'commands' },
+          { name: 'structure', value: 'structure' },
+          { name: 'ranks', value: 'ranks' },
+          { name: 'positions', value: 'positions' }
+        )
+    ),
 
   new SlashCommandBuilder()
     .setName('minjust-structure')
-    .setDescription('Структура ведомства и основные подразделения')
-    .addSubcommand(sub => sub.setName('list').setDescription('Показать структуру ведомства')),
+    .setDescription('Структура ведомства и подразделения'),
 
   new SlashCommandBuilder()
     .setName('minjust-profile')
     .setDescription('Показать служебную карточку сотрудника')
-    .addUserOption(option =>
-      option.setName('user').setDescription('Сотрудник').setRequired(false)
-    ),
+    .addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(false)),
 
   new SlashCommandBuilder()
     .setName('minjust-status')
@@ -73,141 +83,52 @@ const getSlashCommands = () => [
 
   new SlashCommandBuilder()
     .setName('minjust-balance')
-    .setDescription('Управление балансовой системой Министерства')
-    .addSubcommand(sub =>
-      sub
-        .setName('show')
-        .setDescription('Показать баланс участника')
-        .addUserOption(option =>
-          option.setName('user').setDescription('Участник').setRequired(false)
-        )
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName('add')
-        .setDescription('Выдать баллы участнику')
-        .addUserOption(option =>
-          option.setName('user').setDescription('Участник').setRequired(true)
-        )
-        .addIntegerOption(option =>
-          option.setName('amount').setDescription('Количество баллов').setRequired(true).setMinValue(1)
-        )
-        .addStringOption(option =>
-          option.setName('reason').setDescription('Основание').setRequired(false)
-        )
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName('remove')
-        .setDescription('Снять баллы с участника')
-        .addUserOption(option =>
-          option.setName('user').setDescription('Участник').setRequired(true)
-        )
-        .addIntegerOption(option =>
-          option.setName('amount').setDescription('Количество баллов').setRequired(true).setMinValue(1)
-        )
-        .addStringOption(option =>
-          option.setName('reason').setDescription('Основание').setRequired(false)
-        )
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName('set')
-        .setDescription('Установить точный баланс участника')
-        .addUserOption(option =>
-          option.setName('user').setDescription('Участник').setRequired(true)
-        )
-        .addIntegerOption(option =>
-          option.setName('amount').setDescription('Количество баллов').setRequired(true)
-        )
-        .addStringOption(option =>
-          option.setName('reason').setDescription('Основание').setRequired(false)
-        )
-    ),
+    .setDescription('Балансовая система Министерства')
+    .addSubcommand(sub => sub.setName('show').setDescription('Показать баланс').addUserOption(option => option.setName('user').setDescription('Участник').setRequired(false)))
+    .addSubcommand(sub => sub.setName('add').setDescription('Выдать баллы').addUserOption(option => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption(option => option.setName('amount').setDescription('Количество').setRequired(true).setMinValue(1)).addStringOption(option => option.setName('reason').setDescription('Основание').setRequired(false)))
+    .addSubcommand(sub => sub.setName('remove').setDescription('Снять баллы').addUserOption(option => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption(option => option.setName('amount').setDescription('Количество').setRequired(true).setMinValue(1)).addStringOption(option => option.setName('reason').setDescription('Основание').setRequired(false)))
+    .addSubcommand(sub => sub.setName('set').setDescription('Установить точный баланс').addUserOption(option => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption(option => option.setName('amount').setDescription('Количество').setRequired(true)).addStringOption(option => option.setName('reason').setDescription('Основание').setRequired(false))),
 
   new SlashCommandBuilder()
     .setName('minjust-rank')
-    .setDescription('Управление классными чинами')
-    .addSubcommand(sub =>
-      sub.setName('list').setDescription('Показать список классных чинов')
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName('assign')
-        .setDescription('Назначить классный чин сотруднику')
-        .addUserOption(option =>
-          option.setName('user').setDescription('Сотрудник').setRequired(true)
-        )
-        .addStringOption(option =>
-          option.setName('rank').setDescription('Наименование чина').setRequired(true)
-          .setAutocomplete(true)
-        )
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName('clear')
-        .setDescription('Снять классный чин с сотрудника')
-        .addUserOption(option =>
-          option.setName('user').setDescription('Сотрудник').setRequired(true)
-        )
-    ),
+    .setDescription('Классные чины Минюста')
+    .addSubcommand(sub => sub.setName('list').setDescription('Список чинов'))
+    .addSubcommand(sub => sub.setName('assign').setDescription('Назначить чин').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption(option => option.setName('rank').setDescription('Чин').setRequired(true).setAutocomplete(true)))
+    .addSubcommand(sub => sub.setName('clear').setDescription('Снять чин').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true))),
 
   new SlashCommandBuilder()
     .setName('minjust-position')
-    .setDescription('Управление должностями')
-    .addSubcommand(sub =>
-      sub.setName('list').setDescription('Показать список должностей')
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName('assign')
-        .setDescription('Назначить должность сотруднику')
-        .addUserOption(option =>
-          option.setName('user').setDescription('Сотрудник').setRequired(true)
-        )
-        .addStringOption(option =>
-          option.setName('position').setDescription('Наименование должности').setRequired(true)
-          .setAutocomplete(true)
-        )
-    )
-    .addSubcommand(sub =>
-      sub
-        .setName('clear')
-        .setDescription('Снять должность с сотрудника')
-        .addUserOption(option =>
-          option.setName('user').setDescription('Сотрудник').setRequired(true)
-        )
-    ),
+    .setDescription('Должности в ведомстве')
+    .addSubcommand(sub => sub.setName('list').setDescription('Список должностей'))
+    .addSubcommand(sub => sub.setName('assign').setDescription('Назначить должность').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption(option => option.setName('position').setDescription('Должность').setRequired(true).setAutocomplete(true)))
+    .addSubcommand(sub => sub.setName('clear').setDescription('Снять должность').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true))),
+
+  new SlashCommandBuilder()
+    .setName('minjust-department')
+    .setDescription('Подразделения ведомства')
+    .addSubcommand(sub => sub.setName('list').setDescription('Список подразделений'))
+    .addSubcommand(sub => sub.setName('assign').setDescription('Назначить подразделение').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption(option => option.setName('department').setDescription('Подразделение').setRequired(true).setAutocomplete(true)))
+    .addSubcommand(sub => sub.setName('clear').setDescription('Снять подразделение').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true))),
+
+  new SlashCommandBuilder()
+    .setName('minjust-order')
+    .setDescription('Приказы и распоряжения')
+    .addSubcommand(sub => sub.setName('list').setDescription('Показать приказы'))
+    .addSubcommand(sub => sub.setName('add').setDescription('Добавить приказ').addStringOption(option => option.setName('title').setDescription('Заголовок приказа').setRequired(true)).addStringOption(option => option.setName('text').setDescription('Содержание приказа').setRequired(true)))
+    .addSubcommand(sub => sub.setName('clear').setDescription('Очистить приказной журнал')), 
+
+  new SlashCommandBuilder()
+    .setName('minjust-disciplinary')
+    .setDescription('Дисциплинарные меры и взыскания')
+    .addSubcommand(sub => sub.setName('list').setDescription('Показать дисциплинарные записи'))
+    .addSubcommand(sub => sub.setName('add').setDescription('Добавить взыскание').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption(option => option.setName('type').setDescription('Тип взыскания').setRequired(true).addChoices({ name: 'Устное предупреждение', value: 'Устное предупреждение' }, { name: 'Письменное предупреждение', value: 'Письменное предупреждение' }, { name: 'Временное ограничение прав', value: 'Временное ограничение прав' }, { name: 'Дисциплинарное взыскание', value: 'Дисциплинарное взыскание' })).addStringOption(option => option.setName('reason').setDescription('Основание').setRequired(true)))
+    .addSubcommand(sub => sub.setName('clear').setDescription('Очистить дисциплинарную запись').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true))),
 
   new SlashCommandBuilder()
     .setName('minjust-config')
-    .setDescription('Настройки Министерства')
-    .addSubcommand(sub => sub.setName('view').setDescription('Показать текущие настройки'))
-    .addSubcommand(sub =>
-      sub
-        .setName('set')
-        .setDescription('Изменить настройку сервера')
-        .addStringOption(option =>
-          option
-            .setName('key')
-            .setDescription('Параметр')
-            .setRequired(true)
-            .addChoices(
-              { name: 'name', value: 'name' },
-              { name: 'city', value: 'city' },
-              { name: 'currency', value: 'currency' },
-              { name: 'color', value: 'color' },
-              { name: 'welcome-message', value: 'welcomeMessage' },
-              { name: 'welcome-channel', value: 'welcomeChannel' },
-              { name: 'log-channel', value: 'logChannel' },
-              { name: 'admin-role', value: 'adminRole' },
-              { name: 'footer-text', value: 'footerText' }
-            )
-        )
-        .addStringOption(option =>
-          option.setName('value').setDescription('Новое значение').setRequired(true)
-        )
-    )
+    .setDescription('Настройки ведомства')
+    .addSubcommand(sub => sub.setName('view').setDescription('Показать настройки'))
+    .addSubcommand(sub => sub.setName('set').setDescription('Изменить параметр').addStringOption(option => option.setName('key').setDescription('Параметр').setRequired(true).addChoices({ name: 'name', value: 'name' }, { name: 'city', value: 'city' }, { name: 'currency', value: 'currency' }, { name: 'color', value: 'color' }, { name: 'welcome-message', value: 'welcomeMessage' }, { name: 'welcome-channel', value: 'welcomeChannel' }, { name: 'log-channel', value: 'logChannel' }, { name: 'admin-role', value: 'adminRole' }, { name: 'footer-text', value: 'footerText' })).addStringOption(option => option.setName('value').setDescription('Новое значение').setRequired(true)))
 ];
 
 module.exports = {
@@ -216,6 +137,47 @@ module.exports = {
   DEPARTMENTS,
   getSlashCommands
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

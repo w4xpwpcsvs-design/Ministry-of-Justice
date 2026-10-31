@@ -6,27 +6,18 @@ const GUILDS_DIR = path.join(DATA_DIR, 'guilds');
 const BALANCES_DIR = path.join(DATA_DIR, 'balances');
 
 const ensureDirectory = (dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
 
 const ensureFile = (filePath, defaultValue) => {
   ensureDirectory(path.dirname(filePath));
-
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2), 'utf8');
-  }
+  if (!fs.existsSync(filePath)) fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2), 'utf8');
 };
 
 const readJson = (filePath, fallback) => {
   if (!fs.existsSync(filePath)) return fallback;
-
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch {
-    return fallback;
-  }
+  try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); }
+  catch { return fallback; }
 };
 
 const writeJson = (filePath, data) => {
@@ -47,7 +38,10 @@ const defaultGuildConfig = (guildId) => ({
   logChannelId: null,
   adminRoleId: null,
   memberRanks: {},
-  memberPositions: {}
+  memberPositions: {},
+  memberDepartments: {},
+  orders: [],
+  disciplinaryRecords: {}
 });
 
 const getGuildConfigPath = (guildId) => path.join(GUILDS_DIR, `${guildId}.json`);
@@ -56,11 +50,12 @@ const getBalancePath = (guildId) => path.join(BALANCES_DIR, `${guildId}.json`);
 const ensureGuildConfig = (guildId) => {
   const filePath = getGuildConfigPath(guildId);
   const config = readJson(filePath, defaultGuildConfig(guildId));
-
   config.memberRanks = config.memberRanks || {};
   config.memberPositions = config.memberPositions || {};
-  config.currencyPlural = config.currencyPlural || `${config.currency || 'балл'}ов`;
-
+  config.memberDepartments = config.memberDepartments || {};
+  config.orders = config.orders || [];
+  config.disciplinaryRecords = config.disciplinaryRecords || {};
+  if (!config.currencyPlural) config.currencyPlural = `${config.currency || 'балл'}ов`;
   writeJson(filePath, config);
   return config;
 };
@@ -97,10 +92,8 @@ const adjustBalance = (guildId, memberId, delta, metadata = {}) => {
   return setMemberBalance(guildId, memberId, next, metadata);
 };
 
-const normalizeRankName = (name) => (name || '').trim();
-const normalizePositionName = (name) => (name || '').trim();
-
 module.exports = {
+  ensureDirectory,
   ensureGuildConfig,
   saveGuildConfig,
   getBalanceData,
@@ -108,10 +101,228 @@ module.exports = {
   getMemberBalance,
   setMemberBalance,
   adjustBalance,
-  normalizeRankName,
-  normalizePositionName,
   defaultGuildConfig,
   getGuildConfigPath,
-  getBalancePath,
-  ensureDirectory
+  getBalancePath
 };
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
