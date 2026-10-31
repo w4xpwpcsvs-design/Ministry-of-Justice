@@ -50,339 +50,137 @@ const DEPARTMENTS = [
   'Отдел внутреннего аудита и служебной проверки'
 ];
 
+const DEPARTMENT_INFO = {
+  'Министерство юстиции Российской Федерации': 'Высший государственный орган, осуществляющий правовое регулирование и координацию в сфере законности и правоприменения.',
+  'Аппарат Министра юстиции Российской Федерации': 'Обеспечивает работу министра, координацию управления, организацию служебных мероприятий и взаимодействие с руководством.',
+  'Правовой департамент': 'Отвечает за анализ законодательства, подготовку правовых актов, правовое сопровождение нормативной деятельности и систематизацию правовых решений.',
+  'Департамент международного права и сотрудничества': 'Способствует развитию международных правовых связей, правовому взаимодействию с иностранными партнёрами и анализу внешнеправовых вопросов.',
+  'Департамент уголовно-правовой политики': 'Проводит правовую экспертизу уголовной политики, разрабатывает мероприятия по укреплению правопорядка и законности.',
+  'Департамент исполнения и контроля': 'Следит за исполнением правовых решений, служебной дисциплиной, контролем соблюдения регламентов и реализации госмоделей.',
+  'Департамент государственной регистрации и правовой экспертизы': 'Отвечает за регистрацию, проверку документов, правовую экспертизу и подтверждение законности действий государственных структур.',
+  'Департамент правовой защиты и судебной поддержки': 'Обеспечивает правовое сопровождение судебных и межведомственных процессов, защиту интересов ведомства и сопровождение споров.',
+  'Департамент кадровой политики и аттестации': 'Управляет служебным составом, аттестацией, назначениями, повышением квалификации и кадровым учетом.',
+  'Юридическая служба федеральных органов исполнительной власти': 'Служит правовой опорой для органов власти, обеспечивает юридическую поддержку исполнения федеральных задач и законодательных функций.',
+  'Управление делами и документооборота': 'Контролирует служебную документацию, архивный оборот, делопроизводство и официальный документооборот ведомства.',
+  'Отдел внутреннего аудита и служебной проверки': 'Проводит служебный аудит, проверяет соблюдение norme, осуществляет внутренние проверки и анализ эффективности деятельности.'
+};
+
 const getSlashCommands = () => [
   new SlashCommandBuilder()
-    .setName('minjust-help')
-    .setDescription('Служебная справка Минюста')
-    .addStringOption(option =>
+    .setName('help')
+    .setDescription('Служебная справка Министерства юстиции')
+    .addStringOption((option) =>
       option
         .setName('topic')
         .setDescription('Раздел справки')
         .setRequired(false)
         .addChoices(
           { name: 'overview', value: 'overview' },
-          { name: 'commands', value: 'commands' },
           { name: 'structure', value: 'structure' },
           { name: 'ranks', value: 'ranks' },
-          { name: 'positions', value: 'positions' }
+          { name: 'positions', value: 'positions' },
+          { name: 'departments', value: 'departments' },
+          { name: 'commands', value: 'commands' }
         )
     ),
 
   new SlashCommandBuilder()
-    .setName('minjust-structure')
-    .setDescription('Структура ведомства и подразделения'),
+    .setName('structure')
+    .setDescription('Структура ведомства и подразделений'),
 
   new SlashCommandBuilder()
-    .setName('minjust-profile')
+    .setName('profile')
     .setDescription('Показать служебную карточку сотрудника')
-    .addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(false)),
+    .addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(false)),
 
   new SlashCommandBuilder()
-    .setName('minjust-status')
+    .setName('status')
     .setDescription('Сводка по ведомству и статистике'),
 
   new SlashCommandBuilder()
-    .setName('minjust-balance')
+    .setName('balance')
     .setDescription('Балансовая система Министерства')
-    .addSubcommand(sub => sub.setName('show').setDescription('Показать баланс').addUserOption(option => option.setName('user').setDescription('Участник').setRequired(false)))
-    .addSubcommand(sub => sub.setName('add').setDescription('Выдать баллы').addUserOption(option => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption(option => option.setName('amount').setDescription('Количество').setRequired(true).setMinValue(1)).addStringOption(option => option.setName('reason').setDescription('Основание').setRequired(false)))
-    .addSubcommand(sub => sub.setName('remove').setDescription('Снять баллы').addUserOption(option => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption(option => option.setName('amount').setDescription('Количество').setRequired(true).setMinValue(1)).addStringOption(option => option.setName('reason').setDescription('Основание').setRequired(false)))
-    .addSubcommand(sub => sub.setName('set').setDescription('Установить точный баланс').addUserOption(option => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption(option => option.setName('amount').setDescription('Количество').setRequired(true)).addStringOption(option => option.setName('reason').setDescription('Основание').setRequired(false))),
+    .addSubcommand((sub) => sub.setName('show').setDescription('Показать баланс').addUserOption((option) => option.setName('user').setDescription('Участник').setRequired(false)))
+    .addSubcommand((sub) => sub.setName('add').setDescription('Выдать баллы').addUserOption((option) => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption((option) => option.setName('amount').setDescription('Сумма').setRequired(true)).addStringOption((option) => option.setName('reason').setDescription('Основание').setRequired(false)))
+    .addSubcommand((sub) => sub.setName('remove').setDescription('Снять баллы').addUserOption((option) => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption((option) => option.setName('amount').setDescription('Сумма').setRequired(true)).addStringOption((option) => option.setName('reason').setDescription('Основание').setRequired(false)))
+    .addSubcommand((sub) => sub.setName('set').setDescription('Установить точный баланс').addUserOption((option) => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption((option) => option.setName('amount').setDescription('Сумма').setRequired(true)).addStringOption((option) => option.setName('reason').setDescription('Основание').setRequired(false))),
 
   new SlashCommandBuilder()
-    .setName('minjust-rank')
+    .setName('access')
+    .setDescription('Управление служебными правами в системе Министерства')
+    .addSubcommand((sub) =>
+      sub
+        .setName('assign')
+        .setDescription('Назначить служебный доступ')
+        .addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true))
+        .addStringOption((option) =>
+          option
+            .setName('role')
+            .setDescription('Роль доступа')
+            .setRequired(true)
+            .addChoices(
+              { name: 'owner', value: 'owner' },
+              { name: 'minister', value: 'minister' },
+              { name: 'leadership', value: 'leadership' },
+              { name: 'department_admin', value: 'department_admin' },
+              { name: 'staff', value: 'staff' }
+            )
+        )
+    )
+    .addSubcommand((sub) =>
+      sub
+        .setName('revoke')
+        .setDescription('Снять служебный доступ')
+        .addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true))
+    )
+    .addSubcommand((sub) => sub.setName('list').setDescription('Показать список служебных прав')),
+
+  new SlashCommandBuilder()
+    .setName('rank')
     .setDescription('Классные чины Минюста')
-    .addSubcommand(sub => sub.setName('list').setDescription('Список чинов'))
-    .addSubcommand(sub => sub.setName('assign').setDescription('Назначить чин').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption(option => option.setName('rank').setDescription('Чин').setRequired(true).setAutocomplete(true)))
-    .addSubcommand(sub => sub.setName('clear').setDescription('Снять чин').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true))),
+    .addSubcommand((sub) => sub.setName('list').setDescription('Список чинов'))
+    .addSubcommand((sub) => sub.setName('assign').setDescription('Назначить чин').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption((option) => option.setName('rank').setDescription('Чин').setRequired(true).addChoices(...RANKS.map((rank) => ({ name: rank, value: rank })))) )
+    .addSubcommand((sub) => sub.setName('clear').setDescription('Снять чин').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true))),
 
   new SlashCommandBuilder()
-    .setName('minjust-position')
+    .setName('position')
     .setDescription('Должности в ведомстве')
-    .addSubcommand(sub => sub.setName('list').setDescription('Список должностей'))
-    .addSubcommand(sub => sub.setName('assign').setDescription('Назначить должность').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption(option => option.setName('position').setDescription('Должность').setRequired(true).setAutocomplete(true)))
-    .addSubcommand(sub => sub.setName('clear').setDescription('Снять должность').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true))),
+    .addSubcommand((sub) => sub.setName('list').setDescription('Список должностей'))
+    .addSubcommand((sub) => sub.setName('assign').setDescription('Назначить должность').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption((option) => option.setName('position').setDescription('Должность').setRequired(true).addChoices(...POSITIONS.map((position) => ({ name: position, value: position })))) )
+    .addSubcommand((sub) => sub.setName('clear').setDescription('Снять должность').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true))),
 
   new SlashCommandBuilder()
-    .setName('minjust-department')
+    .setName('department')
     .setDescription('Подразделения ведомства')
-    .addSubcommand(sub => sub.setName('list').setDescription('Список подразделений'))
-    .addSubcommand(sub => sub.setName('assign').setDescription('Назначить подразделение').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption(option => option.setName('department').setDescription('Подразделение').setRequired(true).setAutocomplete(true)))
-    .addSubcommand(sub => sub.setName('clear').setDescription('Снять подразделение').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true))),
+    .addSubcommand((sub) => sub.setName('list').setDescription('Список подразделений'))
+    .addSubcommand((sub) => sub.setName('assign').setDescription('Назначить подразделение').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption((option) => option.setName('department').setDescription('Подразделение').setRequired(true).addChoices(...DEPARTMENTS.map((department) => ({ name: department, value: department })))) )
+    .addSubcommand((sub) => sub.setName('clear').setDescription('Снять подразделение').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true))),
 
   new SlashCommandBuilder()
-    .setName('minjust-order')
+    .setName('order')
     .setDescription('Приказы и распоряжения')
-    .addSubcommand(sub => sub.setName('list').setDescription('Показать приказы'))
-    .addSubcommand(sub => sub.setName('add').setDescription('Добавить приказ').addStringOption(option => option.setName('title').setDescription('Заголовок приказа').setRequired(true)).addStringOption(option => option.setName('text').setDescription('Содержание приказа').setRequired(true)))
-    .addSubcommand(sub => sub.setName('clear').setDescription('Очистить приказной журнал')), 
+    .addSubcommand((sub) => sub.setName('list').setDescription('Показать приказы'))
+    .addSubcommand((sub) => sub.setName('add').setDescription('Добавить приказ').addStringOption((option) => option.setName('title').setDescription('Заголовок приказа').setRequired(true)).addStringOption((option) => option.setName('text').setDescription('Текст приказа').setRequired(true)))
+    .addSubcommand((sub) => sub.setName('clear').setDescription('Очистить приказной журнал')),
 
   new SlashCommandBuilder()
-    .setName('minjust-disciplinary')
+    .setName('disciplinary')
     .setDescription('Дисциплинарные меры и взыскания')
-    .addSubcommand(sub => sub.setName('list').setDescription('Показать дисциплинарные записи'))
-    .addSubcommand(sub => sub.setName('add').setDescription('Добавить взыскание').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption(option => option.setName('type').setDescription('Тип взыскания').setRequired(true).addChoices({ name: 'Устное предупреждение', value: 'Устное предупреждение' }, { name: 'Письменное предупреждение', value: 'Письменное предупреждение' }, { name: 'Временное ограничение прав', value: 'Временное ограничение прав' }, { name: 'Дисциплинарное взыскание', value: 'Дисциплинарное взыскание' })).addStringOption(option => option.setName('reason').setDescription('Основание').setRequired(true)))
-    .addSubcommand(sub => sub.setName('clear').setDescription('Очистить дисциплинарную запись').addUserOption(option => option.setName('user').setDescription('Сотрудник').setRequired(true))),
+    .addSubcommand((sub) => sub.setName('list').setDescription('Показать дисциплинарные записи'))
+    .addSubcommand((sub) => sub.setName('add').setDescription('Добавить взыскание').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption((option) => option.setName('type').setDescription('Тип записи').setRequired(true)).addStringOption((option) => option.setName('reason').setDescription('Основание').setRequired(true)))
+    .addSubcommand((sub) => sub.setName('clear').setDescription('Очистить дисциплинарную запись').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true))),
 
   new SlashCommandBuilder()
-    .setName('minjust-config')
+    .setName('config')
     .setDescription('Настройки ведомства')
-    .addSubcommand(sub => sub.setName('view').setDescription('Показать настройки'))
-    .addSubcommand(sub => sub.setName('set').setDescription('Изменить параметр').addStringOption(option => option.setName('key').setDescription('Параметр').setRequired(true).addChoices({ name: 'name', value: 'name' }, { name: 'city', value: 'city' }, { name: 'currency', value: 'currency' }, { name: 'color', value: 'color' }, { name: 'welcome-message', value: 'welcomeMessage' }, { name: 'welcome-channel', value: 'welcomeChannel' }, { name: 'log-channel', value: 'logChannel' }, { name: 'admin-role', value: 'adminRole' }, { name: 'footer-text', value: 'footerText' })).addStringOption(option => option.setName('value').setDescription('Новое значение').setRequired(true)))
+    .addSubcommand((sub) => sub.setName('view').setDescription('Показать настройки'))
+    .addSubcommand((sub) => sub.setName('set').setDescription('Изменить параметр').addStringOption((option) => option.setName('key').setDescription('Параметр').setRequired(true)).addStringOption((option) => option.setName('value').setDescription('Значение').setRequired(true)))
 ];
 
 module.exports = {
   RANKS,
   POSITIONS,
   DEPARTMENTS,
+  DEPARTMENT_INFO,
   getSlashCommands
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
