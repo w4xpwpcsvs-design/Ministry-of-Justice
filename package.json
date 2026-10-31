@@ -1,0 +1,16 @@
+{
+  "name": "ministry-of-justice-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for the Ministry of Justice roleplay server.",
+  "main": "src/index.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node src/index.js",
+    "register": "node src/deploy-commands.js",
+    "dev": "node --watch src/index.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.2",
+    "dotenv": "^16.4.1"
+  }
+}
