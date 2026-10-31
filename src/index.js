@@ -7,6 +7,18 @@ const { registerSlashCommands } = require('./deploy-commands');
 
 config();
 
+const OFFICIAL_THEME = {
+  navy: '#0F1F33',
+  navySoft: '#173456',
+  gold: '#C8A15A',
+  goldSoft: '#E3C67D',
+  slate: '#DDE7F2',
+  success: '#1F8F5F',
+  danger: '#B63D3D',
+  panel: '#11283E',
+  border: '#244A72'
+};
+
 const DATA_DIR = path.join(__dirname, '..', 'data');
 const GUILDS_DIR = path.join(DATA_DIR, 'guilds');
 const BALANCES_DIR = path.join(DATA_DIR, 'balances');
@@ -44,12 +56,12 @@ const getBalancePath = (guildId) => path.join(BALANCES_DIR, `${guildId}.json`);
 const defaultGuildConfig = (guildId) => ({
   guildId,
   name: 'Министерство юстиции Российской Федерации',
-  city: 'Санкт-Петербург',
+  city: 'Москва',
   currency: 'балл',
   currencyPlural: 'баллов',
-  color: '#1F6FEB',
-  welcomeMessage: 'Добро пожаловать в Министерство юстиции Санкт-Петербурга. Ваша служба начинается с соблюдения регламента и дисциплины.',
-  footerText: 'Министерство юстиции Российской Федерации',
+  color: OFFICIAL_THEME.navySoft,
+  welcomeMessage: 'Добро пожаловать в систему государственного управления Министерства юстиции Российской Федерации. Ваша служба начинается с соблюдения законности, дисциплины и служебного порядка.',
+  footerText: 'Государственный реестр Министерства юстиции Российской Федерации',
   welcomeChannelId: null,
   logChannelId: null,
   adminRoleId: null,
@@ -72,6 +84,14 @@ const ensureGuildConfig = (guildId) => {
 
   if (!config.currencyPlural) {
     config.currencyPlural = `${config.currency || 'балл'}ов`;
+  }
+
+  if (!config.color) {
+    config.color = OFFICIAL_THEME.navySoft;
+  }
+
+  if (!config.footerText) {
+    config.footerText = 'Государственный реестр Министерства юстиции Российской Федерации';
   }
 
   writeJson(filePath, config);
@@ -110,7 +130,7 @@ const adjustBalance = (guildId, memberId, delta, metadata = {}) => {
   return setMemberBalance(guildId, memberId, nextBalance, metadata);
 };
 
-const BOT_COLOR = '#1F6FEB';
+const BOT_COLOR = OFFICIAL_THEME.navySoft;
 
 const hasAdminAccess = (member) => {
   if (!member) return false;
@@ -126,7 +146,7 @@ const hasAdminAccess = (member) => {
   return false;
 };
 
-const sendToLogChannel = async (guild, messageText, color = BOT_COLOR) => {
+const sendToLogChannel = async (guild, messageText, color = OFFICIAL_THEME.gold) => {
   const config = ensureGuildConfig(guild.id);
   if (!config.logChannelId) return;
 
@@ -137,14 +157,14 @@ const sendToLogChannel = async (guild, messageText, color = BOT_COLOR) => {
   await channel.send({ embeds: [embed] }).catch(() => {});
 };
 
-const ensureRole = async (guild, roleName, color = BOT_COLOR) => {
+const ensureRole = async (guild, roleName, color = OFFICIAL_THEME.gold) => {
   const existing = guild.roles.cache.find((role) => role.name === roleName);
   if (existing) return existing;
 
   return guild.roles.create({
     name: roleName,
     color,
-    reason: 'Назначение служебной роли в Министерстве юстиции'
+    reason: 'Присвоение служебной роли в государственном реестре Министерства юстиции'
   });
 };
 
@@ -152,13 +172,13 @@ const buildStructureEmbed = () => {
   return new EmbedBuilder()
     .setColor(BOT_COLOR)
     .setTitle('Структура Министерства юстиции Российской Федерации')
-    .setDescription('Служебная иерархия ведомства')
+    .setDescription('Государственная иерархия ведомства и основные функциональные блоки')
     .addFields(
-      { name: 'Руководство', value: 'Министр юстиции РФ\nПервый заместитель\nСтатс-секретарь — заместитель Министра', inline: false },
-      { name: 'Аппарат', value: 'Аппарат Министра\nУправление делами\nКадровая служба', inline: false },
-      { name: 'Правовой блок', value: 'Правовой департамент\nДепартамент международного права\nДепартамент уголовно-правовой политики', inline: false },
-      { name: 'Административный блок', value: 'Департамент исполнения и контроля\nДепартамент государственной регистрации\nДепартамент правовой экспертизы', inline: false },
-      { name: 'Поддержка', value: 'Юридическая служба федеральных органов\nУправление документооборота\nОтдел служебной проверки', inline: false }
+      { name: 'Руководство', value: 'Министр юстиции Российской Федерации\nПервый заместитель Министра\nСтатс-секретарь — заместитель Министра', inline: false },
+      { name: 'Аппарат', value: 'Аппарат Министра\nУправление делами и документооборота\nКадровая служба', inline: false },
+      { name: 'Правовой блок', value: 'Правовой департамент\nДепартамент международного права и сотрудничества\nДепартамент уголовно-правовой политики', inline: false },
+      { name: 'Административный блок', value: 'Департамент исполнения и контроля\nДепартамент государственной регистрации и правовой экспертизы\nДепартамент правовой защиты и судебной поддержки', inline: false },
+      { name: 'Поддержка и надзор', value: 'Департамент кадровой политики и аттестации\nЮридическая служба федеральных органов исполнительной власти\nОтдел внутреннего аудита и служебной проверки', inline: false }
     )
     .setTimestamp();
 };
@@ -166,17 +186,17 @@ const buildStructureEmbed = () => {
 const buildHelpEmbed = (guild) => {
   const config = ensureGuildConfig(guild.id);
   return new EmbedBuilder()
-    .setColor(BOT_COLOR)
-    .setTitle('Справка Минюста')
-    .setDescription(`Служебная справка по системе **${config.name}**.`)
+    .setColor(OFFICIAL_THEME.gold)
+    .setTitle('Государственная справка Минюста')
+    .setDescription(`Официальная служебная справка по системе **${config.name}**.`)
     .addFields(
       { name: 'Основные команды', value: '/minjust-help\n/minjust-structure\n/minjust-profile\n/minjust-status\n/minjust-balance\n/minjust-rank\n/minjust-position\n/minjust-department\n/minjust-order\n/minjust-disciplinary\n/minjust-config', inline: false },
       { name: 'Классные чины', value: RANKS.slice(0, 6).map((rank, idx) => `${idx + 1}. ${rank}`).join('\n') + '\n…', inline: true },
       { name: 'Должности', value: POSITIONS.slice(0, 8).map((position, idx) => `${idx + 1}. ${position}`).join('\n') + '\n…', inline: true },
       { name: 'Подразделения', value: DEPARTMENTS.slice(0, 6).map((dep, idx) => `${idx + 1}. ${dep}`).join('\n') + '\n…', inline: false },
-      { name: 'Примечание', value: 'Для проведения служебных операций необходимы полномочия руководителя или роль администратора.', inline: false }
+      { name: 'Примечание', value: 'Для внесения служебных изменений требуются полномочия руководителя или роль администратора ведомства.', inline: false }
     )
-    .setFooter({ text: config.footerText || 'Министерство юстиции Российской Федерации' })
+    .setFooter({ text: config.footerText || 'Государственный реестр Министерства юстиции Российской Федерации' })
     .setTimestamp();
 };
 
@@ -190,7 +210,7 @@ const buildProfileEmbed = async (guild, targetUser) => {
   const disciplinary = config.disciplinaryRecords[targetUser.id] || [];
 
   return new EmbedBuilder()
-    .setColor(BOT_COLOR)
+    .setColor(OFFICIAL_THEME.gold)
     .setTitle(`Служебная карточка: ${targetUser.tag}`)
     .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 256 }))
     .addFields(
@@ -200,9 +220,9 @@ const buildProfileEmbed = async (guild, targetUser) => {
       { name: 'Подразделение', value: department, inline: true },
       { name: 'Баланс', value: `${balance} ${config.currencyPlural}`, inline: true },
       { name: 'Дисциплинарные записи', value: String(disciplinary.length), inline: true },
-      { name: 'Статус', value: member && member.roles.cache.some((role) => role.name.includes('Министерство') || role.name.includes('Юстиции')) ? 'Служба ведётся в структуре ведомства' : 'Статус не подтверждён', inline: true }
+      { name: 'Статус', value: member && member.roles.cache.some((role) => role.name.includes('Министерство') || role.name.includes('Юстиции')) ? 'Служебный статус подтверждён' : 'Статус не подтверждён', inline: true }
     )
-    .setFooter({ text: config.footerText || 'Министерство юстиции Российской Федерации' })
+    .setFooter({ text: config.footerText || 'Государственный реестр Министерства юстиции Российской Федерации' })
     .setTimestamp();
 };
 
@@ -218,7 +238,7 @@ const client = new Client({
 client.once(Events.ClientReady, () => {
   console.log(`Бот запущен: ${client.user.tag}`);
   client.user.setPresence({
-    activities: [{ name: 'Министерство юстиции Российской Федерации', type: 2 }],
+    activities: [{ name: 'Государственный реестр Минюста', type: 2 }],
     status: 'online'
   });
 });
@@ -230,7 +250,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
   const channel = member.guild.channels.cache.get(config.welcomeChannelId) || await member.guild.channels.fetch(config.welcomeChannelId).catch(() => null);
   if (!channel || !channel.isTextBased()) return;
 
-  const welcomeText = config.welcomeMessage || 'Добро пожаловать в Министерство юстиции Российской Федерации. Ваша служба начинается с соблюдения регламента.';
+  const welcomeText = config.welcomeMessage || 'Добро пожаловать в Министерство юстиции Российской Федерации. Ваша служба начинается с соблюдения законности, дисциплины и служебного порядка.';
   await channel.send({ content: `${member.toString()} ${welcomeText}` }).catch(() => {});
 });
 
@@ -245,20 +265,20 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (topic === 'commands') {
       const embed = new EmbedBuilder()
-        .setColor(BOT_COLOR)
-        .setTitle('Служебные команды Минюста')
-        .setDescription('Нормативный перечень команд ведомства')
+        .setColor(OFFICIAL_THEME.gold)
+        .setTitle('Служебные команды Министерства')
+        .setDescription('Нормативный перечень доступных команд ведомства')
         .addFields(
-          { name: '/minjust-balance', value: 'Проверка, выдача, снятие и корректировка баллов.' },
+          { name: '/minjust-balance', value: 'Проверка, выдача, снятие и корректировка служебного баланса.' },
           { name: '/minjust-rank', value: 'Назначение и снятие классных чинов.' },
           { name: '/minjust-position', value: 'Назначение и снятие должностей.' },
-          { name: '/minjust-department', value: 'Назначение подразделений и структур.' },
+          { name: '/minjust-department', value: 'Управление подразделениями и структурой ведомства.' },
           { name: '/minjust-order', value: 'Реестр приказов и распоряжений.' },
           { name: '/minjust-disciplinary', value: 'Дисциплинарные меры и взыскания.' },
-          { name: '/minjust-config', value: 'Настройки ведомства.' },
+          { name: '/minjust-config', value: 'Настройки государственного реестра.' },
           { name: '/minjust-profile', value: 'Служебная карточка сотрудника.' }
         )
-        .setFooter({ text: config.footerText || 'Министерство юстиции Российской Федерации' })
+        .setFooter({ text: config.footerText || 'Государственный реестр Министерства юстиции Российской Федерации' })
         .setTimestamp();
 
       await interaction.reply({ embeds: [embed], ephemeral: true });
@@ -272,7 +292,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (topic === 'ranks') {
       const embed = new EmbedBuilder()
-        .setColor(BOT_COLOR)
+        .setColor(OFFICIAL_THEME.gold)
         .setTitle('Классные чины')
         .setDescription(RANKS.map((rank, index) => `${index + 1}. ${rank}`).join('\n'))
         .setTimestamp();
@@ -282,7 +302,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     if (topic === 'positions') {
       const embed = new EmbedBuilder()
-        .setColor(BOT_COLOR)
+        .setColor(OFFICIAL_THEME.gold)
         .setTitle('Должности')
         .setDescription(POSITIONS.map((position, index) => `${index + 1}. ${position}`).join('\n'))
         .setTimestamp();
@@ -315,7 +335,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     const embed = new EmbedBuilder()
       .setColor(BOT_COLOR)
       .setTitle('Статус ведомства')
-      .setDescription(`Служебный мониторинг ${config.name}`)
+      .setDescription(`Государственный мониторинг системы ${config.name}`)
       .addFields(
         { name: 'Сотрудников', value: String(totalMembers), inline: true },
         { name: 'Суммарный баланс', value: `${totalBalance} ${config.currencyPlural}`, inline: true },
@@ -342,7 +362,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const department = guildConfig.memberDepartments[targetUser.id] || 'Не назначено';
 
       const embed = new EmbedBuilder()
-        .setColor(BOT_COLOR)
+        .setColor(OFFICIAL_THEME.gold)
         .setTitle('Проверка служебного баланса')
         .setDescription(`Проверка баланса для ${targetUser}`)
         .addFields(
@@ -370,7 +390,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const previousBalance = getMemberBalance(guild.id, targetUser.id).balance || 0;
       const updated = adjustBalance(guild.id, targetUser.id, amount, { reason, updatedBy: interaction.user.id, lastUpdated: new Date().toISOString() });
       const embed = new EmbedBuilder()
-        .setColor('#10B981')
+        .setColor(OFFICIAL_THEME.success)
         .setTitle('Начисление баллов')
         .setDescription(`Сотруднику ${targetUser} начислено ${amount} ${guildConfig.currencyPlural}.`)
         .addFields(
@@ -381,7 +401,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setTimestamp();
 
       await interaction.reply({ embeds: [embed] });
-      await sendToLogChannel(guild, `**Начисление:** ${interaction.user} начислил ${targetUser} ${amount} ${guildConfig.currencyPlural}. Основание: ${reason}.`, '#10B981');
+      await sendToLogChannel(guild, `**Начисление:** ${interaction.user} начислил ${targetUser} ${amount} ${guildConfig.currencyPlural}. Основание: ${reason}.`, OFFICIAL_THEME.success);
       return;
     }
 
@@ -389,7 +409,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const previousBalance = getMemberBalance(guild.id, targetUser.id).balance || 0;
       const updated = adjustBalance(guild.id, targetUser.id, -amount, { reason, updatedBy: interaction.user.id, lastUpdated: new Date().toISOString() });
       const embed = new EmbedBuilder()
-        .setColor('#D93B3B')
+        .setColor(OFFICIAL_THEME.danger)
         .setTitle('Удержание баллов')
         .setDescription(`С сотрудника ${targetUser} удержано ${amount} ${guildConfig.currencyPlural}.`)
         .addFields(
@@ -400,7 +420,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setTimestamp();
 
       await interaction.reply({ embeds: [embed] });
-      await sendToLogChannel(guild, `**Удержание:** ${interaction.user} удержал у ${targetUser} ${amount} ${guildConfig.currencyPlural}. Основание: ${reason}.`, '#D93B3B');
+      await sendToLogChannel(guild, `**Удержание:** ${interaction.user} удержал у ${targetUser} ${amount} ${guildConfig.currencyPlural}. Основание: ${reason}.`, OFFICIAL_THEME.danger);
       return;
     }
 
@@ -408,7 +428,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const previousBalance = getMemberBalance(guild.id, targetUser.id).balance || 0;
       const updated = setMemberBalance(guild.id, targetUser.id, amount, { reason, updatedBy: interaction.user.id, lastUpdated: new Date().toISOString() });
       const embed = new EmbedBuilder()
-        .setColor('#F59E0B')
+        .setColor(OFFICIAL_THEME.gold)
         .setTitle('Корректировка баланса')
         .setDescription(`Баланс ${targetUser} установлен в размере ${amount} ${guildConfig.currencyPlural}.`)
         .addFields(
@@ -419,7 +439,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
         .setTimestamp();
 
       await interaction.reply({ embeds: [embed] });
-      await sendToLogChannel(guild, `**Корректировка баланса:** ${interaction.user} установил ${targetUser} баланс ${amount} ${guildConfig.currencyPlural}. Основание: ${reason}.`, '#F59E0B');
+      await sendToLogChannel(guild, `**Корректировка баланса:** ${interaction.user} установил ${targetUser} баланс ${amount} ${guildConfig.currencyPlural}. Основание: ${reason}.`, OFFICIAL_THEME.gold);
     }
     return;
   }
@@ -448,7 +468,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (subcommand === 'assign') {
       const rankName = interaction.options.getString('rank');
       if (!RANKS.includes(rankName)) {
-        await interaction.reply({ content: 'Указанный чин не найден в реестре Министерства.', ephemeral: true });
+        await interaction.reply({ content: 'Указанный чин не найден в государственном реестре Министерства.', ephemeral: true });
         return;
       }
 
@@ -458,12 +478,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
-      const role = await ensureRole(guild, rankName, 0x1f6feb);
+      const role = await ensureRole(guild, rankName, OFFICIAL_THEME.gold);
       await member.roles.add(role).catch(() => {});
       guildConfig.memberRanks[targetUser.id] = rankName;
       saveGuildConfig(guild.id, guildConfig);
       await interaction.reply({ content: `Сотруднику ${targetUser} присвоен чин: ${rankName}.` });
-      await sendToLogChannel(guild, `**Назначение чина:** ${interaction.user} присвоил ${targetUser} чин **${rankName}**.`, '#1F6FEB');
+      await sendToLogChannel(guild, `**Назначение чина:** ${interaction.user} присвоил ${targetUser} чин **${rankName}**.`, OFFICIAL_THEME.gold);
       return;
     }
 
@@ -483,7 +503,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       delete guildConfig.memberRanks[targetUser.id];
       saveGuildConfig(guild.id, guildConfig);
       await interaction.reply({ content: `Сотруднику ${targetUser} снят чин.` });
-      await sendToLogChannel(guild, `**Снятие чина:** ${interaction.user} снял чин с ${targetUser}.`, '#D93B3B');
+      await sendToLogChannel(guild, `**Снятие чина:** ${interaction.user} снял чин с ${targetUser}.`, OFFICIAL_THEME.danger);
     }
     return;
   }
@@ -522,12 +542,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
-      const role = await ensureRole(guild, positionName, 0x10b981);
+      const role = await ensureRole(guild, positionName, OFFICIAL_THEME.success);
       await member.roles.add(role).catch(() => {});
       guildConfig.memberPositions[targetUser.id] = positionName;
       saveGuildConfig(guild.id, guildConfig);
       await interaction.reply({ content: `Сотруднику ${targetUser} назначена должность: ${positionName}.` });
-      await sendToLogChannel(guild, `**Назначение должности:** ${interaction.user} назначил ${targetUser} на должность **${positionName}**.`, '#10B981');
+      await sendToLogChannel(guild, `**Назначение должности:** ${interaction.user} назначил ${targetUser} на должность **${positionName}**.`, OFFICIAL_THEME.success);
       return;
     }
 
@@ -547,7 +567,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       delete guildConfig.memberPositions[targetUser.id];
       saveGuildConfig(guild.id, guildConfig);
       await interaction.reply({ content: `Сотруднику ${targetUser} снята должность.` });
-      await sendToLogChannel(guild, `**Снятие должности:** ${interaction.user} снял должность с ${targetUser}.`, '#D93B3B');
+      await sendToLogChannel(guild, `**Снятие должности:** ${interaction.user} снял должность с ${targetUser}.`, OFFICIAL_THEME.danger);
     }
     return;
   }
@@ -576,7 +596,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (subcommand === 'assign') {
       const departmentName = interaction.options.getString('department');
       if (!DEPARTMENTS.includes(departmentName)) {
-        await interaction.reply({ content: 'Указан��ое подразделение не найдено в реестре ведомства.', ephemeral: true });
+        await interaction.reply({ content: 'Указанное подразделение не найдено в реестре ведомства.', ephemeral: true });
         return;
       }
 
@@ -586,12 +606,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
         return;
       }
 
-      const role = await ensureRole(guild, departmentName, 0x2f6fed);
+      const role = await ensureRole(guild, departmentName, OFFICIAL_THEME.navySoft);
       await member.roles.add(role).catch(() => {});
       guildConfig.memberDepartments[targetUser.id] = departmentName;
       saveGuildConfig(guild.id, guildConfig);
       await interaction.reply({ content: `Сотруднику ${targetUser} назначено подразделение: ${departmentName}.` });
-      await sendToLogChannel(guild, `**Назначение подразделения:** ${interaction.user} назначил ${targetUser} в подразделение **${departmentName}**.`, '#2F6FED');
+      await sendToLogChannel(guild, `**Назначение подразделения:** ${interaction.user} назначил ${targetUser} в подразделение **${departmentName}**.`, OFFICIAL_THEME.navySoft);
       return;
     }
 
@@ -611,7 +631,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       delete guildConfig.memberDepartments[targetUser.id];
       saveGuildConfig(guild.id, guildConfig);
       await interaction.reply({ content: `Сотруднику ${targetUser} снято подразделение.` });
-      await sendToLogChannel(guild, `**Снятие подразделения:** ${interaction.user} снял подразделение с ${targetUser}.`, '#D93B3B');
+      await sendToLogChannel(guild, `**Снятие подразделения:** ${interaction.user} снял подразделение с ${targetUser}.`, OFFICIAL_THEME.danger);
     }
     return;
   }
@@ -647,7 +667,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       guildConfig.orders.push({ title, text, author: interaction.user.tag, createdAt: new Date().toISOString() });
       saveGuildConfig(guild.id, guildConfig);
       await interaction.reply({ content: `Приказ **${title}** зарегистрирован в журнале.` });
-      await sendToLogChannel(guild, `**Приказ:** ${interaction.user} зарегистрировал приказ **${title}**.`, '#1F6FEB');
+      await sendToLogChannel(guild, `**Приказ:** ${interaction.user} зарегистрировал приказ **${title}**.`, OFFICIAL_THEME.gold);
       return;
     }
 
@@ -655,7 +675,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       guildConfig.orders = [];
       saveGuildConfig(guild.id, guildConfig);
       await interaction.reply({ content: 'Приказной журнал очищен.' });
-      await sendToLogChannel(guild, `**Очистка приказного журнала:** ${interaction.user} провёл очистку приказного журнала.`, '#D93B3B');
+      await sendToLogChannel(guild, `**Очистка приказного журнала:** ${interaction.user} провёл очистку приказного журнала.`, OFFICIAL_THEME.danger);
     }
     return;
   }
@@ -672,9 +692,9 @@ client.on(Events.InteractionCreate, async (interaction) => {
       }
 
       const embed = new EmbedBuilder()
-        .setColor('#D93B3B')
+        .setColor(OFFICIAL_THEME.danger)
         .setTitle('Дисциплинарный реестр')
-        .setDescription(allRecords.map(([userId, records]) => `**<@${userId}>**\n${records.map((record) => `- ${record.type}: ${record.reason} (${new Date(record.date).toLocaleDateString('ru-RU')} )`).join('\n')}`).join('\n\n'))
+        .setDescription(allRecords.map(([userId, records]) => `**<@${userId}>**\n${records.map((record) => `- ${record.type}: ${record.reason} (${new Date(record.date).toLocaleDateString('ru-RU')})`).join('\n')}`).join('\n\n'))
         .setTimestamp();
 
       await interaction.reply({ embeds: [embed] });
@@ -695,7 +715,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       guildConfig.disciplinaryRecords[user.id] = list;
       saveGuildConfig(guild.id, guildConfig);
       await interaction.reply({ content: `Сотруднику ${user} внесена дисциплинарная запись: ${type}.` });
-      await sendToLogChannel(guild, `**Дисциплинарное взыскание:** ${interaction.user} внес ${user} запись **${type}** по причине: ${reason}.`, '#D93B3B');
+      await sendToLogChannel(guild, `**Дисциплинарное взыскание:** ${interaction.user} внес ${user} запись **${type}** по причине: ${reason}.`, OFFICIAL_THEME.danger);
       return;
     }
 
@@ -704,7 +724,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       delete guildConfig.disciplinaryRecords[user.id];
       saveGuildConfig(guild.id, guildConfig);
       await interaction.reply({ content: `Дисциплинарные записи для ${user} удалены.` });
-      await sendToLogChannel(guild, `**Снятие дисциплинарной записи:** ${interaction.user} очистил дисциплинарную запись ${user}.`, '#D93B3B');
+      await sendToLogChannel(guild, `**Снятие дисциплинарной записи:** ${interaction.user} очистил дисциплинарную запись ${user}.`, OFFICIAL_THEME.danger);
     }
     return;
   }
@@ -763,7 +783,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
     saveGuildConfig(guild.id, config);
     await interaction.reply({ content: `Параметр **${key}** обновлён.` });
-    await sendToLogChannel(guild, `**Настройка ведомства:** ${interaction.user} изменил параметр **${key}**.`, '#1F6FEB');
+    await sendToLogChannel(guild, `**Настройка ведомства:** ${interaction.user} изменил параметр **${key}**.`, OFFICIAL_THEME.gold);
     return;
   }
 });
