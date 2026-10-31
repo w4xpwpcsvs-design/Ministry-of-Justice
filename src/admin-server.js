@@ -1,202 +1,125 @@
 const express = require('express');
-const path = require('path');
 const fs = require('fs');
-const { ensureGuildConfig, saveGuildConfig, getBotOwnerId, getAccessEntry, setAccessEntry } = require('./dataStore');
+const path = require('path');
+const { config } = require('dotenv');
+const {
+  ensureGuildConfig,
+  saveGuildConfig,
+  getBotOwnerId,
+  DEFAULT_ACCESS
+} = require('./dataStore');
+
+config();
 
 const app = express();
 const PORT = Number(process.env.ADMIN_PORT || 3001);
-const DEFAULT_HTML = path.join(__dirname, '..', 'admin', 'index.html');
+const ADMIN_DIR = path.join(__dirname, '..', 'admin');
+const DEFAULT_HTML = path.join(ADMIN_DIR, 'index.html');
+
+const safeList = (value) => Array.isArray(value) ? value : [];
+
+function getGuildOwnerId(guildId) {
+  const cfg = ensureGuildConfig(guildId);
+  return cfg.guildOwnerId || null;
+}
+
+function isSuperAdmin(userId, guildId = process.env.GUILD_ID || 'server') {
+  if (!userId) return false;
+  const botOwnerId = String(getBotOwnerId());
+  const guildOwnerId = String(getGuildOwnerId(guildId));
+  return String(userId) === botOwnerId || String(userId) === guildOwnerId;
+}
+
+function hasRoleAccess(userId, requiredRole, guildId = process.env.GUILD_ID || 'server') {
+  if (!userId) return false;
+  if (isSuperAdmin(userId, guildId)) return true;
+
+  const cfg = ensureGuildConfig(guildId);
+  const access = cfg.access || { ...DEFAULT_ACCESS };
+
+  const hierarchy = {
+    owner: 5,
+    minister: 4,
+    leadership: 3,
+    department_admin: 2,
+    staff: 1
+  };
+
+  const matchingRole = Object.entries(access).find(([, ids]) => safeList(ids).map(String).includes(String(userId)));
+  const current = matchingRole ? matchingRole[0] : 'staff';
+  return (hierarchy[current] || 0) >= (hierarchy[requiredRole] || 0);
+}
 
 app.use(express.json());
-app.use(express.static(path.join(__dirname, '..', 'admin')));
-
-const safeRead = (guildId) => ensureGuildConfig(guildId);
-
-const isBotOwner = (userId) => userId && String(userId) === String(getBotOwnerId());
-const isGuildOwner = (guild, userId) => guild && userId && String(guild.ownerId) === String(userId);
-
-const getBaseAccessSummary = (guildId) => {
-  const config = safeRead(guildId);
-  return {
-    owner: config.access.owner || [],
-    minister: config.access.minister || [],
-    leadership: config.access.leadership || [],
-    department_admin: config.access.department_admin || [],
-    staff: config.access.staff || []
-  };
-};
+app.use(express.static(ADMIN_DIR));
 
 app.get('/api/system', (req, res) => {
   const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
-  const config = safeRead(guildId);
+  const cfg = ensureGuildConfig(guildId);
   res.json({
     guildId,
-    name: config.name,
-    city: config.city,
-    access: getBaseAccessSummary(guildId),
+    name: cfg.name,
+    city: cfg.city,
     botOwnerId: getBotOwnerId(),
-    roles: ['owner', 'minister', 'leadership', 'department_admin', 'staff']
+    guildOwnerId: getGuildOwnerId(guildId),
+    roles: Object.keys(DEFAULT_ACCESS),
+    access: cfg.access || { ...DEFAULT_ACCESS }
   });
 });
 
 app.get('/api/access', (req, res) => {
   const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
-  res.json(getBaseAccessSummary(guildId));
+  const cfg = ensureGuildConfig(guildId);
+  res.json(cfg.access || { ...DEFAULT_ACCESS });
 });
 
 app.post('/api/access', (req, res) => {
-  const { guildId = process.env.GUILD_ID || 'server', userId, role } = req.body || {};
-  if (!userId || !role) return res.status(400).json({ success: false, message: 'userId and role are required.' });
-  const config = safeRead(guildId);
+  const guildId = req.body.guildId || process.env.GUILD_ID || 'server';
+  const { actorId, userId, role } = req.body || {};
+
+  if (!userId || !role) {
+    return res.status(400).json({ success: false, message: 'userId and role are required.' });
+  }
+
+  if (!hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied. Only owner or minister may assign access.' });
+  }
+
   const allowed = ['owner', 'minister', 'leadership', 'department_admin', 'staff'];
-  if (!allowed.includes(role)) return res.status(400).json({ success: false, message: 'Invalid role.' });
+  if (!allowed.includes(role)) {
+    return res.status(400).json({ success: false, message: 'Invalid role.' });
+  }
 
-  const access = config.access || { owner: [], minister: [], leadership: [], department_admin: [], staff: [] };
+  const cfg = ensureGuildConfig(guildId);
+  const access = { ...DEFAULT_ACCESS, ...(cfg.access || {}) };
   Object.keys(access).forEach((key) => {
-    access[key] = (access[key] || []).filter((id) => String(id) !== String(userId));
+    access[key] = safeList(access[key]).filter((id) => String(id) !== String(userId));
   });
-  access[role] = Array.from(new Set([...(access[role] || []), String(userId)]));
-  config.access = access;
-  saveGuildConfig(guildId, config);
-  res.json({ success: true, access: config.access });
-});
+  access[role] = Array.from(new Set([...(safeList(access[role])), String(userId)]));
+  cfg.access = access;
+  saveGuildConfig(guildId, cfg);
 
-app.get('/api/positions', (req, res) => {
-  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
-  const config = safeRead(guildId);
-  res.json(config.positions || []);
-});
-
-app.post('/api/positions', (req, res) => {
-  const guildId = req.body.guildId || process.env.GUILD_ID || 'server';
-  const { name } = req.body || {};
-  if (!name) return res.status(400).json({ success: false, message: 'Position name is required.' });
-  const config = safeRead(guildId);
-  config.positions = Array.isArray(config.positions) ? config.positions : [];
-  if (!config.positions.some((item) => String(item.name).toLowerCase() === String(name).toLowerCase())) {
-    config.positions.push({ id: Date.now().toString(), name, createdAt: new Date().toISOString() });
-    saveGuildConfig(guildId, config);
-  }
-  res.json({ success: true, positions: config.positions });
-});
-
-app.delete('/api/positions/:id', (req, res) => {
-  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
-  const config = safeRead(guildId);
-  config.positions = (config.positions || []).filter((item) => String(item.id) !== String(req.params.id));
-  saveGuildConfig(guildId, config);
-  res.json({ success: true, positions: config.positions });
-});
-
-app.get('/api/ranks', (req, res) => {
-  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
-  const config = safeRead(guildId);
-  res.json(config.ranks || []);
-});
-
-app.post('/api/ranks', (req, res) => {
-  const guildId = req.body.guildId || process.env.GUILD_ID || 'server';
-  const { name } = req.body || {};
-  if (!name) return res.status(400).json({ success: false, message: 'Rank name is required.' });
-  const config = safeRead(guildId);
-  config.ranks = Array.isArray(config.ranks) ? config.ranks : [];
-  if (!config.ranks.some((item) => String(item.name).toLowerCase() === String(name).toLowerCase())) {
-    config.ranks.push({ id: Date.now().toString(), name, createdAt: new Date().toISOString() });
-    saveGuildConfig(guildId, config);
-  }
-  res.json({ success: true, ranks: config.ranks });
-});
-
-app.delete('/api/ranks/:id', (req, res) => {
-  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
-  const config = safeRead(guildId);
-  config.ranks = (config.ranks || []).filter((item) => String(item.id) !== String(req.params.id));
-  saveGuildConfig(guildId, config);
-  res.json({ success: true, ranks: config.ranks });
-});
-
-app.get('/api/departments', (req, res) => {
-  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
-  const config = safeRead(guildId);
-  res.json(config.departments || []);
-});
-
-app.post('/api/departments', (req, res) => {
-  const guildId = req.body.guildId || process.env.GUILD_ID || 'server';
-  const { name } = req.body || {};
-  if (!name) return res.status(400).json({ success: false, message: 'Department name is required.' });
-  const config = safeRead(guildId);
-  config.departments = Array.isArray(config.departments) ? config.departments : [];
-  if (!config.departments.some((item) => String(item.name).toLowerCase() === String(name).toLowerCase())) {
-    config.departments.push({ id: Date.now().toString(), name, createdAt: new Date().toISOString() });
-    saveGuildConfig(guildId, config);
-  }
-  res.json({ success: true, departments: config.departments });
-});
-
-app.delete('/api/departments/:id', (req, res) => {
-  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
-  const config = safeRead(guildId);
-  config.departments = (config.departments || []).filter((item) => String(item.id) !== String(req.params.id));
-  saveGuildConfig(guildId, config);
-  res.json({ success: true, departments: config.departments });
-});
-
-app.get('/api/orders', (req, res) => {
-  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
-  const config = safeRead(guildId);
-  res.json(config.orders || []);
-});
-
-app.post('/api/orders', (req, res) => {
-  const guildId = req.body.guildId || process.env.GUILD_ID || 'server';
-  const { title, text, author } = req.body || {};
-  if (!title || !text) return res.status(400).json({ success: false, message: 'Title and text are required.' });
-  const config = safeRead(guildId);
-  config.orders = Array.isArray(config.orders) ? config.orders : [];
-  config.orders.push({ id: Date.now().toString(), title, text, author: author || 'Ministry', createdAt: new Date().toISOString() });
-  saveGuildConfig(guildId, config);
-  res.json({ success: true, orders: config.orders });
-});
-
-app.get('/api/tickets', (req, res) => {
-  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
-  const config = safeRead(guildId);
-  res.json(config.tickets || []);
-});
-
-app.post('/api/tickets', (req, res) => {
-  const guildId = req.body.guildId || process.env.GUILD_ID || 'server';
-  const { title, description, category = 'Общие обращения', priority = 'medium' } = req.body || {};
-  if (!title || !description) return res.status(400).json({ success: false, message: 'Title and description are required.' });
-  const config = safeRead(guildId);
-  config.tickets = Array.isArray(config.tickets) ? config.tickets : [];
-  config.tickets.push({
-    id: Date.now().toString(),
-    title,
-    description,
-    category,
-    priority,
-    status: 'new',
-    createdAt: new Date().toISOString()
-  });
-  saveGuildConfig(guildId, config);
-  res.json({ success: true, tickets: config.tickets });
+  res.json({ success: true, access: cfg.access });
 });
 
 app.get('/api/employees', (req, res) => {
   const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
-  const config = safeRead(guildId);
-  res.json(config.employees || []);
+  const cfg = ensureGuildConfig(guildId);
+  res.json(cfg.employees || []);
 });
 
 app.post('/api/employees', (req, res) => {
   const guildId = req.body.guildId || process.env.GUILD_ID || 'server';
-  const { discordId, fullName, department, position, rank } = req.body || {};
+  const { actorId, discordId, fullName, department, position, rank } = req.body || {};
+
   if (!fullName) return res.status(400).json({ success: false, message: 'Full name is required.' });
-  const config = safeRead(guildId);
-  config.employees = Array.isArray(config.employees) ? config.employees : [];
-  config.employees.push({
+  if (!hasRoleAccess(actorId, 'department_admin', guildId) && !hasRoleAccess(actorId, 'leadership', guildId) && !hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied. Only leadership may register personnel.' });
+  }
+
+  const cfg = ensureGuildConfig(guildId);
+  cfg.employees = safeList(cfg.employees);
+  cfg.employees.push({
     id: Date.now().toString(),
     discordId: discordId || '',
     fullName,
@@ -207,15 +130,206 @@ app.post('/api/employees', (req, res) => {
     accessLevel: 'staff',
     createdAt: new Date().toISOString()
   });
-  saveGuildConfig(guildId, config);
-  res.json({ success: true, employees: config.employees });
+  saveGuildConfig(guildId, cfg);
+  res.json({ success: true, employees: cfg.employees });
+});
+
+app.delete('/api/employees/:id', (req, res) => {
+  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
+  const actorId = req.query.userId || req.body.userId;
+  if (!hasRoleAccess(actorId, 'department_admin', guildId) && !hasRoleAccess(actorId, 'leadership', guildId) && !hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied.' });
+  }
+
+  const cfg = ensureGuildConfig(guildId);
+  cfg.employees = safeList(cfg.employees).filter((employee) => String(employee.id) !== String(req.params.id));
+  saveGuildConfig(guildId, cfg);
+  res.json({ success: true, employees: cfg.employees });
+});
+
+app.get('/api/departments', (req, res) => {
+  const cfg = ensureGuildConfig(req.query.guildId || process.env.GUILD_ID || 'server');
+  res.json(cfg.departments || []);
+});
+
+app.post('/api/departments', (req, res) => {
+  const guildId = req.body.guildId || process.env.GUILD_ID || 'server';
+  const { actorId, name } = req.body || {};
+  if (!name) return res.status(400).json({ success: false, message: 'Department name is required.' });
+  if (!hasRoleAccess(actorId, 'leadership', guildId) && !hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied. Only leadership may create departments.' });
+  }
+
+  const cfg = ensureGuildConfig(guildId);
+  cfg.departments = safeList(cfg.departments);
+  if (!cfg.departments.some((item) => String(item.name).toLowerCase() === String(name).toLowerCase())) {
+    cfg.departments.push({ id: Date.now().toString(), name, createdAt: new Date().toISOString() });
+    saveGuildConfig(guildId, cfg);
+  }
+  res.json({ success: true, departments: cfg.departments });
+});
+
+app.delete('/api/departments/:id', (req, res) => {
+  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
+  const actorId = req.query.userId || req.body.userId;
+  if (!hasRoleAccess(actorId, 'leadership', guildId) && !hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied.' });
+  }
+
+  const cfg = ensureGuildConfig(guildId);
+  cfg.departments = safeList(cfg.departments).filter((item) => String(item.id) !== String(req.params.id));
+  saveGuildConfig(guildId, cfg);
+  res.json({ success: true, departments: cfg.departments });
+});
+
+app.get('/api/positions', (req, res) => {
+  const cfg = ensureGuildConfig(req.query.guildId || process.env.GUILD_ID || 'server');
+  res.json(cfg.positions || []);
+});
+
+app.post('/api/positions', (req, res) => {
+  const guildId = req.body.guildId || process.env.GUILD_ID || 'server';
+  const { actorId, name } = req.body || {};
+  if (!name) return res.status(400).json({ success: false, message: 'Position name is required.' });
+  if (!hasRoleAccess(actorId, 'leadership', guildId) && !hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied. Only leadership may manage positions.' });
+  }
+
+  const cfg = ensureGuildConfig(guildId);
+  cfg.positions = safeList(cfg.positions);
+  if (!cfg.positions.some((item) => String(item.name).toLowerCase() === String(name).toLowerCase())) {
+    cfg.positions.push({ id: Date.now().toString(), name, createdAt: new Date().toISOString() });
+    saveGuildConfig(guildId, cfg);
+  }
+  res.json({ success: true, positions: cfg.positions });
+});
+
+app.delete('/api/positions/:id', (req, res) => {
+  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
+  const actorId = req.query.userId || req.body.userId;
+  if (!hasRoleAccess(actorId, 'leadership', guildId) && !hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied.' });
+  }
+
+  const cfg = ensureGuildConfig(guildId);
+  cfg.positions = safeList(cfg.positions).filter((item) => String(item.id) !== String(req.params.id));
+  saveGuildConfig(guildId, cfg);
+  res.json({ success: true, positions: cfg.positions });
+});
+
+app.get('/api/ranks', (req, res) => {
+  const cfg = ensureGuildConfig(req.query.guildId || process.env.GUILD_ID || 'server');
+  res.json(cfg.ranks || []);
+});
+
+app.post('/api/ranks', (req, res) => {
+  const guildId = req.body.guildId || process.env.GUILD_ID || 'server';
+  const { actorId, name } = req.body || {};
+  if (!name) return res.status(400).json({ success: false, message: 'Rank name is required.' });
+  if (!hasRoleAccess(actorId, 'leadership', guildId) && !hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied. Only leadership may manage ranks.' });
+  }
+
+  const cfg = ensureGuildConfig(guildId);
+  cfg.ranks = safeList(cfg.ranks);
+  if (!cfg.ranks.some((item) => String(item.name).toLowerCase() === String(name).toLowerCase())) {
+    cfg.ranks.push({ id: Date.now().toString(), name, createdAt: new Date().toISOString() });
+    saveGuildConfig(guildId, cfg);
+  }
+  res.json({ success: true, ranks: cfg.ranks });
+});
+
+app.delete('/api/ranks/:id', (req, res) => {
+  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
+  const actorId = req.query.userId || req.body.userId;
+  if (!hasRoleAccess(actorId, 'leadership', guildId) && !hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied.' });
+  }
+
+  const cfg = ensureGuildConfig(guildId);
+  cfg.ranks = safeList(cfg.ranks).filter((item) => String(item.id) !== String(req.params.id));
+  saveGuildConfig(guildId, cfg);
+  res.json({ success: true, ranks: cfg.ranks });
+});
+
+app.get('/api/orders', (req, res) => {
+  const cfg = ensureGuildConfig(req.query.guildId || process.env.GUILD_ID || 'server');
+  res.json(cfg.orders || []);
+});
+
+app.post('/api/orders', (req, res) => {
+  const guildId = req.body.guildId || process.env.GUILD_ID || 'server';
+  const { actorId, title, text, author } = req.body || {};
+  if (!title || !text) return res.status(400).json({ success: false, message: 'Title and text are required.' });
+  if (!hasRoleAccess(actorId, 'leadership', guildId) && !hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied. Only leadership may issue orders.' });
+  }
+
+  const cfg = ensureGuildConfig(guildId);
+  cfg.orders = safeList(cfg.orders);
+  cfg.orders.push({ id: Date.now().toString(), title, text, author: author || 'Ministry', createdAt: new Date().toISOString() });
+  saveGuildConfig(guildId, cfg);
+  res.json({ success: true, orders: cfg.orders });
+});
+
+app.delete('/api/orders/:id', (req, res) => {
+  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
+  const actorId = req.query.userId || req.body.userId;
+  if (!hasRoleAccess(actorId, 'leadership', guildId) && !hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied.' });
+  }
+
+  const cfg = ensureGuildConfig(guildId);
+  cfg.orders = safeList(cfg.orders).filter((item) => String(item.id) !== String(req.params.id));
+  saveGuildConfig(guildId, cfg);
+  res.json({ success: true, orders: cfg.orders });
+});
+
+app.get('/api/tickets', (req, res) => {
+  const cfg = ensureGuildConfig(req.query.guildId || process.env.GUILD_ID || 'server');
+  res.json(cfg.tickets || []);
+});
+
+app.post('/api/tickets', (req, res) => {
+  const guildId = req.body.guildId || process.env.GUILD_ID || 'server';
+  const { actorId, title, description, category = 'Общие обращения' } = req.body || {};
+  if (!title || !description) return res.status(400).json({ success: false, message: 'Title and description are required.' });
+  if (!hasRoleAccess(actorId, 'department_admin', guildId) && !hasRoleAccess(actorId, 'leadership', guildId) && !hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied. Only departmental/admin staff may create tickets.' });
+  }
+
+  const cfg = ensureGuildConfig(guildId);
+  cfg.tickets = safeList(cfg.tickets);
+  cfg.tickets.push({
+    id: Date.now().toString(),
+    title,
+    description,
+    category,
+    status: 'new',
+    createdAt: new Date().toISOString()
+  });
+  saveGuildConfig(guildId, cfg);
+  res.json({ success: true, tickets: cfg.tickets });
+});
+
+app.delete('/api/tickets/:id', (req, res) => {
+  const guildId = req.query.guildId || process.env.GUILD_ID || 'server';
+  const actorId = req.query.userId || req.body.userId;
+  if (!hasRoleAccess(actorId, 'department_admin', guildId) && !hasRoleAccess(actorId, 'leadership', guildId) && !hasRoleAccess(actorId, 'minister', guildId) && !isSuperAdmin(actorId, guildId)) {
+    return res.status(403).json({ success: false, message: 'Access denied.' });
+  }
+
+  const cfg = ensureGuildConfig(guildId);
+  cfg.tickets = safeList(cfg.tickets).filter((item) => String(item.id) !== String(req.params.id));
+  saveGuildConfig(guildId, cfg);
+  res.json({ success: true, tickets: cfg.tickets });
 });
 
 app.get('/', (req, res) => {
   if (fs.existsSync(DEFAULT_HTML)) return res.sendFile(DEFAULT_HTML);
-  res.send('<html><body><h1>Ministry of Justice Admin Panel</h1><p>Panel is available.</p></body></html>');
+  res.send('<html><body><h1>Ministry of Justice Admin Panel</h1><p>State access system active.</p></body></html>');
 });
 
 app.listen(PORT, () => {
-  console.log(`[Ministry of Justice] Admin panel running on http://localhost:${PORT}`);
+  console.log(`[Ministry of Justice] Government panel running on http://localhost:${PORT}`);
 });
