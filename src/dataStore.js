@@ -5,6 +5,14 @@ const DATA_DIR = path.join(__dirname, '..', 'data');
 const GUILDS_DIR = path.join(DATA_DIR, 'guilds');
 const BALANCES_DIR = path.join(DATA_DIR, 'balances');
 
+const DEFAULT_ACCESS = {
+  owner: [],
+  minister: [],
+  leadership: [],
+  department_admin: [],
+  staff: []
+};
+
 const ensureDirectory = (dir) => {
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 };
@@ -16,8 +24,11 @@ const ensureFile = (filePath, defaultValue) => {
 
 const readJson = (filePath, fallback) => {
   if (!fs.existsSync(filePath)) return fallback;
-  try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); }
-  catch { return fallback; }
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return fallback;
+  }
 };
 
 const writeJson = (filePath, data) => {
@@ -32,15 +43,21 @@ const defaultGuildConfig = (guildId) => ({
   currency: 'балл',
   currencyPlural: 'баллов',
   color: '#1F6FEB',
-  welcomeMessage: 'Добро пожаловать в Министерство юстиции Санкт-Петербурга. Ваша служба начинается с соблюдения регламента ведомства.',
+  welcomeMessage: 'Добро пожаловать в Министерство юстиции Российской Федерации. Ваша служба начинается с соблюдения регламента и дисциплины.',
   footerText: 'Министерство юстиции Российской Федерации',
   welcomeChannelId: null,
   logChannelId: null,
   adminRoleId: null,
+  access: { ...DEFAULT_ACCESS },
+  employees: [],
+  departments: [],
+  positions: [],
+  ranks: [],
+  orders: [],
+  tickets: [],
   memberRanks: {},
   memberPositions: {},
   memberDepartments: {},
-  orders: [],
   disciplinaryRecords: {}
 });
 
@@ -50,12 +67,24 @@ const getBalancePath = (guildId) => path.join(BALANCES_DIR, `${guildId}.json`);
 const ensureGuildConfig = (guildId) => {
   const filePath = getGuildConfigPath(guildId);
   const config = readJson(filePath, defaultGuildConfig(guildId));
+  config.access = { ...DEFAULT_ACCESS, ...(config.access || {}) };
+  Object.keys(DEFAULT_ACCESS).forEach((key) => {
+    config.access[key] = Array.isArray(config.access[key]) ? config.access[key] : [];
+  });
+
+  config.employees = Array.isArray(config.employees) ? config.employees : [];
+  config.departments = Array.isArray(config.departments) ? config.departments : [];
+  config.positions = Array.isArray(config.positions) ? config.positions : [];
+  config.ranks = Array.isArray(config.ranks) ? config.ranks : [];
+  config.orders = Array.isArray(config.orders) ? config.orders : [];
+  config.tickets = Array.isArray(config.tickets) ? config.tickets : [];
   config.memberRanks = config.memberRanks || {};
   config.memberPositions = config.memberPositions || {};
   config.memberDepartments = config.memberDepartments || {};
-  config.orders = config.orders || [];
   config.disciplinaryRecords = config.disciplinaryRecords || {};
+
   if (!config.currencyPlural) config.currencyPlural = `${config.currency || 'балл'}ов`;
+
   writeJson(filePath, config);
   return config;
 };
@@ -92,6 +121,36 @@ const adjustBalance = (guildId, memberId, delta, metadata = {}) => {
   return setMemberBalance(guildId, memberId, next, metadata);
 };
 
+const getBotOwnerId = () => process.env.BOT_OWNER_ID || process.env.OWNER_ID || '1225811175154122755';
+
+const getAccessEntry = (guildId, userId) => {
+  const config = ensureGuildConfig(guildId);
+  const access = config.access || { ...DEFAULT_ACCESS };
+  for (const [role, users] of Object.entries(access)) {
+    if (Array.isArray(users) && users.some((id) => String(id) === String(userId))) {
+      return { role, userId };
+    }
+  }
+  return null;
+};
+
+const setAccessEntry = (guildId, userId, role, enabled = true) => {
+  const config = ensureGuildConfig(guildId);
+  const access = config.access || { ...DEFAULT_ACCESS };
+
+  Object.keys(access).forEach((key) => {
+    access[key] = Array.isArray(access[key]) ? access[key].filter((id) => String(id) !== String(userId)) : [];
+  });
+
+  if (enabled && role && access[role]) {
+    access[role] = Array.from(new Set([...(access[role] || []), String(userId)]));
+  }
+
+  config.access = { ...DEFAULT_ACCESS, ...access };
+  saveGuildConfig(guildId, config);
+  return config.access;
+};
+
 module.exports = {
   ensureDirectory,
   ensureGuildConfig,
@@ -103,226 +162,9 @@ module.exports = {
   adjustBalance,
   defaultGuildConfig,
   getGuildConfigPath,
-  getBalancePath
+  getBalancePath,
+  getAccessEntry,
+  setAccessEntry,
+  getBotOwnerId,
+  DEFAULT_ACCESS
 };
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
