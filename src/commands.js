@@ -12,7 +12,7 @@ const RANKS = [
   'Государственный советник юстиции Российской Федерации 1 класса',
   'Действительный государственный советник юстиции Российской Федерации 3 класса',
   'Действительный государственный советник юстиции Российской Федерации 2 класса',
-  'Действительный государстве��ный советник юстиции Российской Федерации 1 класса',
+  'Действительный государственный советник юстиции Российской Федерации 1 класса',
   'Действительный государственный советник юстиции Российской Федерации'
 ];
 
@@ -51,23 +51,23 @@ const DEPARTMENTS = [
 ];
 
 const DEPARTMENT_INFO = {
-  'Министерство юстиции Российской Федерации': 'Высший федеральный орган исполнительной власти, обеспечивающий государственную политику в сфере правовой системы, законности, правоприменения и служебного управления.',
-  'Аппарат Министра юстиции Российской Федерации': 'Осуществляет организационное, аналитическое и служебное сопровождение деятельности Министра, координацию управленческих решений и взаимодействие с руководящим составом.',
-  'Правовой департамент': 'Отвечает за правовое сопровождение государственной деятельности, подготовку нормативной базы, правовой анализ и экспертизу документов и инициатив ведомства.',
-  'Департамент международного права и сотрудничества': 'Способствует развитию международного правового сотрудничества, анализирует внешнеправовые вопросы и обеспечивает взаимодействие по международным юридическим вопросам.',
-  'Департамент уголовно-правовой политики': 'Формирует правовые подходы в сфере уголовной политики, анализа угроз и обеспечения соблюдения законности в правоохранительной и судебной практике.',
-  'Департамент исполнения и контроля': 'Следит за исполнением служебных решений, соблюдением регламентов, организационной дисциплины и эффективностью реализации государственных задач.',
-  'Департамент государственной регистрации и правовой экспертизы': 'Проводит регистрацию, правовую проверку документов и экспертизу законности управленческих и правовых действий в рамках ведомства.',
-  'Департамент правовой защиты и судебной поддержки': 'Обеспечивает юридическое сопровождение судебных, административных и правовых процессов, позволяет защищать интересы ведомства и обеспечивать законность действий.',
-  'Департамент кадровой политики и аттестации': 'Отвечает за кадровое обеспечение, аттестацию, подбор сотрудников, служебное развитие и формирование профессионального состава ведомства.',
-  'Юридическая служба федеральных органов исполнительной власти': 'Оказывает правовую поддержку федеральным органам исполнительной власти, обеспечивает методическую и практическую юридическую работу на межведомственном уровне.',
-  'Управление делами и документооборота': 'Контролирует служебную документацию, делопроизводство, архивный оборот, порядок хранения и юридической фиксации официальной информации.',
-  'Отдел внутреннего аудита и служебной проверки': 'Проводит внутренние проверки, аудит служебной деятельности, анализ соблюдения нормативных требований и обеспечение прозрачности ведомственной работы.'
+  'Министерство юстиции Российской Федерации': 'Высший федеральный орган исполнительной власти, обеспечивающий реализацию государственной правовой политики и защиту законности.',
+  'Аппарат Министра юстиции Российской Федерации': 'Осуществляет организационное, аналитическое и служебное обеспечение деятельности министра и руководства ведомства.',
+  'Правовой департамент': 'Отвечает за правовое сопровождение государственной деятельности, подготовку нормативно-правовой базы и правовую экспертизу.',
+  'Департамент международного права и сотрудничества': 'Способствует развитию международного правового сотрудничества и правовому обеспечению внешнеполитических инициатив.',
+  'Департамент уголовно-правовой политики': 'Формирует правовые подходы в сфере уголовной политики, анализа законодательства и правовой модели реагирования.',
+  'Департамент исполнения и контроля': 'Следит за исполнением служебных решений, соблюдением регламентов, организационной дисциплины и надзора за выполнением задач.',
+  'Департамент государственной регистрации и правовой экспертизы': 'Проводит регистрацию, правовую проверку и экспертизу документов, обращений и служебной документации.',
+  'Департамент правовой защиты и судебной поддержки': 'Обеспечивает юридическое сопровождение судебных, административных и правоприменительных процессов.',
+  'Департамент кадровой политики и аттестации': 'Отвечает за кадровое обеспечение, аттестацию, подбор сотрудников и служебное развитие персонала.',
+  'Юридическая служба федеральных органов исполнительной власти': 'Оказывает правовую поддержку федеральным органам и обеспечивает согласованность правовых решений.',
+  'Управление делами и документооборота': 'Контролирует служебную документацию, делопроизводство, архивные процессы и порядок документооборота.',
+  'Отдел внутреннего аудита и служебной проверки': 'Проводит внутренние проверки, аудит служебной деятельности и анализ соблюдения нормативных требований.'
 };
 
 const helpOverviewText = `Министерство юстиции Российской Федерации
 
-Министерство юстиции Российской Федерации является федеральным органом исполнительной власти, обеспечивающим реализацию государственной политики в сфере правовой системы, законности, правоприменения, государственного управления и служебной дисциплины.
+Министерство юстиции Российской Федерации является федеральным органом исполнительной власти, обеспечивающим реализацию государственной правовой политики и защиту законности.
 
 Основные задачи ведомства:
 - формирование и реализация государственной правовой политики;
@@ -154,12 +154,11 @@ const helpOverviewText = `Министерство юстиции Российс
 - /position
 - /department
 - /balance
-- /disciplinary
-- /config`;
+- /disciplinary`;
 
 const helpStructureText = `Структура Министерства юстиции Российской Федерации
 
-Министерство юстиции является центральным органом федеральной исполнительной власти, обеспечивающим реализацию государственной правовой политики и осуществляющим правовое сопровождение деятельности государственных органов.
+Министерство юстиции является центральным органом федеральной исполнительной власти, обеспечивающим реализацию правовой политики и соблюдение законности в сфере государственного управления.
 
 Основные направления деятельности:
 - правовое регулирование и государственная политика в сфере юстиции;
@@ -171,13 +170,13 @@ const helpStructureText = `Структура Министерства юсти�
 Подразделения:
 - Аппарат Министра — организационное и управленческое обеспечение деятельности министра и руководства.
 - Правовой департамент — правовое сопровождение государственной деятельности и нормативно-правовая работа.
-- Департамент международного права и сотрудничества — международное правовое взаимодействие и внешнеправовая координация.
-- Департамент уголовно-правовой политики — работа в сфере уголовной политики, правового анализа и правопорядка.
+- Департамент международного права и сотрудничества — международное правовое взаимодействие и внешнеполитические вопросы.
+- Департамент уголовно-правовой политики — работа в сфере уголовной политики, правового анализа и правоприменения.
 - Департамент исполнения и контроля — контроль исполнения решений, дисциплины и регламентов.
 - Департамент государственной регистрации и правовой экспертизы — регистрационная и экспертная деятельность.
 - Департамент правовой защиты и судебной поддержки — сопровождение судебных и правовых процессов.
 - Департамент кадровой политики и аттестации — служебный состав, аттестация и развитие кадров.
-- Юридическая служба федеральных органов исполнительной власти — правовое сопровождение межведомственных структур.
+- Юридическая служба федеральных органов исполнительной власти — правовое сопровождение межведомственных и государственных задач.
 - Управление делами и документооборота — служебное делопроизводство и документный оборот.
 - Отдел внутреннего аудита и служебной проверки — аудит, проверки и анализ соблюдения норм.
 
@@ -219,9 +218,9 @@ const getSlashCommands = () => [
     .setName('balance')
     .setDescription('Балансовая система Министерства')
     .addSubcommand((sub) => sub.setName('show').setDescription('Показать баланс').addUserOption((option) => option.setName('user').setDescription('Участник').setRequired(false)))
-    .addSubcommand((sub) => sub.setName('add').setDescription('Выдать баллы').addUserOption((option) => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption((option) => option.setName('amount').setDescription('Сумма').setRequired(true)).addStringOption((option) => option.setName('reason').setDescription('Основание').setRequired(false)))
-    .addSubcommand((sub) => sub.setName('remove').setDescription('Снять баллы').addUserOption((option) => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption((option) => option.setName('amount').setDescription('Сумма').setRequired(true)).addStringOption((option) => option.setName('reason').setDescription('Основание').setRequired(false)))
-    .addSubcommand((sub) => sub.setName('set').setDescription('Установить точный баланс').addUserOption((option) => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption((option) => option.setName('amount').setDescription('Сумма').setRequired(true)).addStringOption((option) => option.setName('reason').setDescription('Основание').setRequired(false))),
+    .addSubcommand((sub) => sub.setName('add').setDescription('Выдать баллы').addUserOption((option) => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption((option) => option.setName('amount').setDescription('Количество').setRequired(true)).addStringOption((option) => option.setName('reason').setDescription('Основание').setRequired(false)))
+    .addSubcommand((sub) => sub.setName('remove').setDescription('Снять баллы').addUserOption((option) => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption((option) => option.setName('amount').setDescription('Количество').setRequired(true)).addStringOption((option) => option.setName('reason').setDescription('Основание').setRequired(false)))
+    .addSubcommand((sub) => sub.setName('set').setDescription('Установить точный баланс').addUserOption((option) => option.setName('user').setDescription('Участник').setRequired(true)).addIntegerOption((option) => option.setName('amount').setDescription('Количество').setRequired(true)).addStringOption((option) => option.setName('reason').setDescription('Основание').setRequired(false))),
 
   new SlashCommandBuilder()
     .setName('access')
@@ -257,21 +256,21 @@ const getSlashCommands = () => [
     .setName('rank')
     .setDescription('Классные чины Минюста')
     .addSubcommand((sub) => sub.setName('list').setDescription('Список чинов'))
-    .addSubcommand((sub) => sub.setName('assign').setDescription('Назначить чин').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption((option) => option.setName('rank').setDescription('Чин').setRequired(true).addChoices(...RANKS.map((rank) => ({ name: rank, value: rank })))) )
+    .addSubcommand((sub) => sub.setName('assign').setDescription('Назначить чин').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption((option) => option.setName('rank').setDescription('Чин').setRequired(true).addChoices(...RANKS.map((name) => ({ name, value: name })))) )
     .addSubcommand((sub) => sub.setName('clear').setDescription('Снять чин').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true))),
 
   new SlashCommandBuilder()
     .setName('position')
     .setDescription('Должности в ведомстве')
     .addSubcommand((sub) => sub.setName('list').setDescription('Список должностей'))
-    .addSubcommand((sub) => sub.setName('assign').setDescription('Назначить должность').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption((option) => option.setName('position').setDescription('Должность').setRequired(true).addChoices(...POSITIONS.map((position) => ({ name: position, value: position })))) )
+    .addSubcommand((sub) => sub.setName('assign').setDescription('Назначить должность').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption((option) => option.setName('position').setDescription('Должность').setRequired(true).addChoices(...POSITIONS.map((name) => ({ name, value: name })))) )
     .addSubcommand((sub) => sub.setName('clear').setDescription('Снять должность').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true))),
 
   new SlashCommandBuilder()
     .setName('department')
     .setDescription('Подразделения ведомства')
     .addSubcommand((sub) => sub.setName('list').setDescription('Список подразделений'))
-    .addSubcommand((sub) => sub.setName('assign').setDescription('Назначить подразделение').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption((option) => option.setName('department').setDescription('Подразделение').setRequired(true).addChoices(...DEPARTMENTS.map((department) => ({ name: department, value: department })))) )
+    .addSubcommand((sub) => sub.setName('assign').setDescription('Назначить подразделение').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption((option) => option.setName('department').setDescription('Подразделение').setRequired(true).addChoices(...DEPARTMENTS.map((name) => ({ name, value: name })))) )
     .addSubcommand((sub) => sub.setName('clear').setDescription('Снять подразделение').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true))),
 
   new SlashCommandBuilder()
@@ -285,14 +284,8 @@ const getSlashCommands = () => [
     .setName('disciplinary')
     .setDescription('Дисциплинарные меры и взыскания')
     .addSubcommand((sub) => sub.setName('list').setDescription('Показать дисциплинарные записи'))
-    .addSubcommand((sub) => sub.setName('add').setDescription('Добавить взыскание').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption((option) => option.setName('type').setDescription('Тип записи').setRequired(true)).addStringOption((option) => option.setName('reason').setDescription('Основание').setRequired(true)))
-    .addSubcommand((sub) => sub.setName('clear').setDescription('Очистить дисциплинарную запись').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true))),
-
-  new SlashCommandBuilder()
-    .setName('config')
-    .setDescription('Настройки ведомства')
-    .addSubcommand((sub) => sub.setName('view').setDescription('Показать настройки'))
-    .addSubcommand((sub) => sub.setName('set').setDescription('Изменить параметр').addStringOption((option) => option.setName('key').setDescription('Параметр').setRequired(true)).addStringOption((option) => option.setName('value').setDescription('Значение').setRequired(true)))
+    .addSubcommand((sub) => sub.setName('add').setDescription('Добавить взыскание').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)).addStringOption((option) => option.setName('type').setDescription('Тип нарушения').setRequired(true)).addStringOption((option) => option.setName('reason').setDescription('Основание').setRequired(true)))
+    .addSubcommand((sub) => sub.setName('clear').setDescription('Очистить дисциплинарную запись').addUserOption((option) => option.setName('user').setDescription('Сотрудник').setRequired(true)))
 ];
 
 module.exports = {
