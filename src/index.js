@@ -1,119 +1,466 @@
-const fs = require('fs');
-const path = require('path');
+const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, Events } = require('discord.js');
+const { config } = require('dotenv');
+const { ensureGuildConfig, saveGuildConfig, getMemberBalance, setMemberBalance, adjustBalance } = require('./dataStore');
+const { RANKS, POSITIONS, getSlashCommands } = require('./commands');
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const GUILDS_DIR = path.join(DATA_DIR, 'guilds');
-const BALANCES_DIR = path.join(DATA_DIR, 'balances');
+config();
 
-const ensureDirectory = (dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-};
-
-const ensureFile = (filePath, defaultValue) => {
-  ensureDirectory(path.dirname(filePath));
-
-  if (!fs.existsSync(filePath)) {
-    fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2), 'utf8');
-  }
-};
-
-const readJson = (filePath, fallback) => {
-  if (!fs.existsSync(filePath)) return fallback;
-
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch {
-    return fallback;
-  }
-};
-
-const writeJson = (filePath, data) => {
-  ensureDirectory(path.dirname(filePath));
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-};
-
-const getGuildConfigPath = (guildId) => path.join(GUILDS_DIR, `${guildId}.json`);
-const getBalancePath = (guildId) => path.join(BALANCES_DIR, `${guildId}.json`);
-
-const defaultGuildConfig = (guildId) => ({
-  guildId,
-  name: 'Министерство юстиции Российской Федерации',
-  city: 'Санкт-Петербург',
-  currency: 'балл',
-  currencyPlural: 'баллов',
-  color: '#1F6FEB',
-  welcomeMessage: 'Добро пожаловать в Министерство юстиции Санкт-Петербурга. Начните работу в соответствии с регламентом ведомства.',
-  footerText: 'Министерство юстиции Российской Федерации',
-  welcomeChannelId: null,
-  logChannelId: null,
-  adminRoleId: null,
-  memberRanks: {},
-  memberPositions: {}
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent
+  ]
 });
 
-const ensureGuildConfig = (guildId) => {
-  const filePath = getGuildConfigPath(guildId);
-  const config = readJson(filePath, defaultGuildConfig(guildId));
+const botColor = '#1F6FEB';
 
-  if (!config.memberRanks) config.memberRanks = {};
-  if (!config.memberPositions) config.memberPositions = {};
-  if (!config.currencyPlural) config.currencyPlural = config.currency + 'ов';
+const hasAdminAccess = (member) => {
+  if (!member) return false;
+  if (member.permissions.has(PermissionsBitField.Flags.Administrator)) return true;
+  if (member.permissions.has(PermissionsBitField.Flags.ManageGuild)) return true;
 
-  writeJson(filePath, config);
-  return config;
+  const guildConfig = ensureGuildConfig(member.guild.id);
+  if (guildConfig.adminRoleId) {
+    const role = member.guild.roles.cache.get(guildConfig.adminRoleId);
+    if (role && member.roles.cache.has(role.id)) return true;
+  }
+
+  return false;
 };
 
-const saveGuildConfig = (guildId, config) => {
-  const filePath = getGuildConfigPath(guildId);
-  writeJson(filePath, config);
+const sendToLogChannel = async (guild, messageText, color = botColor) => {
+  const config = ensureGuildConfig(guild.id);
+  if (!config.logChannelId) return;
+
+  const channel = guild.channels.cache.get(config.logChannelId) || await guild.channels.fetch(config.logChannelId).catch(() => null);
+  if (!channel || !channel.isTextBased()) return;
+
+  const embed = new EmbedBuilder()
+    .setColor(color)
+    .setDescription(messageText)
+    .setTimestamp();
+
+  await channel.send({ embeds: [embed] }).catch(() => {});
 };
 
-const getBalanceData = (guildId) => {
-  const filePath = getBalancePath(guildId);
-  ensureFile(filePath, {});
-  return readJson(filePath, {});
+const ensureRole = async (guild, roleName, color = botColor) => {
+  const existing = guild.roles.cache.find(role => role.name === roleName);
+  if (existing) return existing;
+
+  return guild.roles.create({
+    name: roleName,
+    color,
+    reason: 'Назначение служебной роли Министерства юстиции'
+  });
 };
 
-const saveBalanceData = (guildId, data) => {
-  writeJson(getBalancePath(guildId), data);
+const buildProfileEmbed = async (guild, targetUser) => {
+  const config = ensureGuildConfig(guild.id);
+  const member = await guild.members.fetch(targetUser.id).catch(() => null);
+  const rank = config.memberRanks[targetUser.id] || 'Не назначен';
+  const position = config.memberPositions[targetUser.id] || 'Не назначена';
+  const balance = getMemberBalance(guild.id, targetUser.id).balance || 0;
+
+  return new EmbedBuilder()
+    .setColor(botColor)
+    .setTitle(`Служебная карточка: ${targetUser.tag}`)
+    .setThumbnail(targetUser.displayAvatarURL({ dynamic: true, size: 256 }))
+    .addFields(
+      { name: 'ФИО / ник', value: targetUser.displayName || targetUser.username, inline: true },
+      { name: 'Классный чин', value: rank, inline: true },
+      { name: 'Должность', value: position, inline: true },
+      { name: 'Баланс', value: `${balance} ${config.currencyPlural}`, inline: true },
+      { name: 'Статус', value: member?.roles.cache.some(role => role.name.includes('Министерство')) ? 'Ведётся служба в ведомстве' : 'Принадлежность не подтверждена', inline: true },
+      { name: 'Подразделение', value: config.name, inline: true }
+    )
+    .setFooter({ text: config.footerText || 'Министерство юстиции Российской Федерации' })
+    .setTimestamp();
 };
 
-const getMemberBalance = (guildId, memberId) => {
-  const data = getBalanceData(guildId);
-  return data[memberId] || { balance: 0 };
-};
+client.once(Events.ClientReady, () => {
+  console.log(`Бот запущен: ${client.user.tag}`);
+  client.user.setPresence({
+    activities: [{
+      name: 'Министерство юстиции Российской Федерации',
+      type: 2
+    }],
+    status: 'online'
+  });
+});
 
-const setMemberBalance = (guildId, memberId, balance, metadata = {}) => {
-  const data = getBalanceData(guildId);
-  data[memberId] = { balance, ...metadata };
-  saveBalanceData(guildId, data);
-  return data[memberId];
-};
+client.on(Events.GuildMemberAdd, async (member) => {
+  const config = ensureGuildConfig(member.guild.id);
+  if (!config.welcomeChannelId) return;
 
-const updateMemberBalance = (guildId, memberId, diff, metadata = {}) => {
-  const current = getMemberBalance(guildId, memberId);
-  const nextBalance = Math.max(0, (current.balance || 0) + diff);
-  return setMemberBalance(guildId, memberId, nextBalance, metadata);
-};
+  const channel = member.guild.channels.cache.get(config.welcomeChannelId) || await member.guild.channels.fetch(config.welcomeChannelId).catch(() => null);
+  if (!channel || !channel.isTextBased()) return;
 
-const normalizeRankName = (name) => name?.trim();
-const normalizePositionName = (name) => name?.trim();
+  const welcomeText = config.welcomeMessage || 'Добро пожаловать в Министерство юстиции Российской Федерации.';
+
+  await channel.send({
+    content: `${member.toString()} ${welcomeText}`
+  }).catch(() => {});
+});
+
+client.on(Events.InteractionCreate, async (interaction) => {
+  if (!interaction.isChatInputCommand()) return;
+
+  const { commandName, guild } = interaction;
+
+  if (commandName === 'minjust-help') {
+    const embed = new EmbedBuilder()
+      .setColor(botColor)
+      .setTitle('Министерство юстиции Российской Федерации')
+      .setDescription('Служебная справка по системе ведомственного учёта и кадрового управления.')
+      .addFields(
+        { name: '/minjust-balance show', value: 'Проверить текущий баланс баллов сотрудника.' },
+        { name: '/minjust-balance add', value: 'Выдать баллы сотруднику.' },
+        { name: '/minjust-balance remove', value: 'Снять баллы с сотрудника.' },
+        { name: '/minjust-balance set', value: 'Установить точный баланс.' },
+        { name: '/minjust-rank assign', value: 'Назначить классный чин.' },
+        { name: '/minjust-position assign', value: 'Назначить должность.' },
+        { name: '/minjust-config view', value: 'Показать параметры ведомства.' },
+        { name: '/minjust-profile', value: 'Показать служебную карточку сотрудника.' }
+      )
+      .setFooter({ text: 'Руководство по служебной дисциплине и ведомственному учёту' })
+      .setTimestamp();
+
+    await interaction.reply({ embeds: [embed], ephemeral: true });
+    return;
+  }
+
+  if (commandName === 'minjust-profile') {
+    const user = interaction.options.getUser('user') || interaction.user;
+    const profileEmbed = await buildProfileEmbed(guild, user);
+    await interaction.reply({ embeds: [profileEmbed] });
+    return;
+  }
+
+  if (commandName === 'minjust-status') {
+    const config = ensureGuildConfig(guild.id);
+    const members = await guild.members.fetch();
+    const totalMembers = members.size;
+    const totalBalance = Array.from(members.values()).reduce((sum, member) => {
+      const value = getMemberBalance(guild.id, member.id).balance || 0;
+      return sum + value;
+    }, 0);
+
+    const embed = new EmbedBuilder()
+      .setColor(botColor)
+      .setTitle('Статус ведомства')
+      .setDescription(`Служебный мониторинг ${config.name}`)
+      .addFields(
+        { name: 'Общее число сотрудников', value: String(totalMembers), inline: true },
+        { name: 'Суммарный балансовый фонд', value: `${totalBalance} ${config.currencyPlural}`, inline: true },
+        { name: 'Город расположения', value: config.city, inline: true },
+        { name: 'Классных чинов', value: String(RANKS.length), inline: true },
+        { name: 'Должностей', value: String(POSITIONS.length), inline: true },
+        { name: 'Режим управления', value: config.adminRoleId ? 'Роль-администратор задана' : 'Административный доступ по правам сервера', inline: true }
+      )
+      .setTimestamp();
+
+    await interaction.reply({ embeds: [embed] });
+    return;
+  }
+
+  if (commandName === 'minjust-balance') {
+    const sub = interaction.options.getSubcommand();
+    const targetUser = interaction.options.getUser('user') || interaction.user;
+    const guildConfig = ensureGuildConfig(guild.id);
+
+    if (sub === 'show') {
+      const balance = getMemberBalance(guild.id, targetUser.id).balance || 0;
+      const rank = guildConfig.memberRanks[targetUser.id] || 'Не назначен';
+      const position = guildConfig.memberPositions[targetUser.id] || 'Не назначена';
+
+      const embed = new EmbedBuilder()
+        .setColor(botColor)
+        .setTitle('Проверка баланса')
+        .setDescription(`Оперативная сводка по сотруднику ${targetUser}`)
+        .addFields(
+          { name: 'Сотрудник', value: targetUser.tag, inline: true },
+          { name: 'Классный чин', value: rank, inline: true },
+          { name: 'Должность', value: position, inline: true },
+          { name: 'Баланс', value: `${balance} ${guildConfig.currencyPlural}`, inline: true }
+        )
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    if (!hasAdminAccess(interaction.member)) {
+      await interaction.reply({ content: 'У вас нет полномочий для проведения ведомственных расчётов.', ephemeral: true });
+      return;
+    }
+
+    const amount = interaction.options.getInteger('amount');
+    const reason = interaction.options.getString('reason') || 'Без указания основания';
+
+    if (sub === 'add') {
+      const previousBalance = getMemberBalance(guild.id, targetUser.id).balance || 0;
+      const updated = adjustBalance(guild.id, targetUser.id, amount, { reason, updatedBy: interaction.user.id, lastUpdated: new Date().toISOString() });
+
+      const embed = new EmbedBuilder()
+        .setColor('#10B981')
+        .setTitle('Выдано премиальное начисление')
+        .setDescription(`Сотруднику ${targetUser} начислено ${amount} ${guildConfig.currencyPlural}.`)
+        .addFields(
+          { name: 'Основание', value: reason, inline: false },
+          { name: 'Предыдущий баланс', value: `${previousBalance}`, inline: true },
+          { name: 'Текущий баланс', value: `${updated.balance}`, inline: true }
+        )
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed] });
+      await sendToLogChannel(guild, `**Начисление:** ${interaction.user} выдал ${targetUser} ${amount} ${guildConfig.currencyPlural}. Основание: ${reason}.`, '#10B981');
+      return;
+    }
+
+    if (sub === 'remove') {
+      const previousBalance = getMemberBalance(guild.id, targetUser.id).balance || 0;
+      const updated = adjustBalance(guild.id, targetUser.id, -amount, { reason, updatedBy: interaction.user.id, lastUpdated: new Date().toISOString() });
+
+      const embed = new EmbedBuilder()
+        .setColor('#D93B3B')
+        .setTitle('Произведено удержание')
+        .setDescription(`С сотрудника ${targetUser} удержано ${amount} ${guildConfig.currencyPlural}.`)
+        .addFields(
+          { name: 'Основание', value: reason, inline: false },
+          { name: 'Предыдущий баланс', value: `${previousBalance}`, inline: true },
+          { name: 'Текущий баланс', value: `${updated.balance}`, inline: true }
+        )
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed] });
+      await sendToLogChannel(guild, `**Удержание:** ${interaction.user} снял с ${targetUser} ${amount} ${guildConfig.currencyPlural}. Основание: ${reason}.`, '#D93B3B');
+      return;
+    }
+
+    if (sub === 'set') {
+      const previousBalance = getMemberBalance(guild.id, targetUser.id).balance || 0;
+      const updated = setMemberBalance(guild.id, targetUser.id, amount, { reason, updatedBy: interaction.user.id, lastUpdated: new Date().toISOString() });
+
+      const embed = new EmbedBuilder()
+        .setColor('#F59E0B')
+        .setTitle('Изменён служебный баланс')
+        .setDescription(`Баланс ${targetUser} установлен в размере ${amount} ${guildConfig.currencyPlural}.`)
+        .addFields(
+          { name: 'Основание', value: reason, inline: false },
+          { name: 'Предыдущий баланс', value: `${previousBalance}`, inline: true },
+          { name: 'Текущий баланс', value: `${updated.balance}`, inline: true }
+        )
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed] });
+      await sendToLogChannel(guild, `**Корректировка баланса:** ${interaction.user} установил ${targetUser} баланс ${amount} ${guildConfig.currencyPlural}. Основание: ${reason}.`, '#F59E0B');
+      return;
+    }
+  }
+
+  if (commandName === 'minjust-rank') {
+    const sub = interaction.options.getSubcommand();
+    const guildConfig = ensureGuildConfig(guild.id);
+
+    if (sub === 'list') {
+      const embed = new EmbedBuilder()
+        .setColor(botColor)
+        .setTitle('Классные чины Министерства юстиции')
+        .setDescription(RANKS.map((rank, idx) => `${idx + 1}. ${rank}`).join('\n'))
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    if (!hasAdminAccess(interaction.member)) {
+      await interaction.reply({ content: 'У текущего служащего недостаточно полномочий для назначения классных чинов.', ephemeral: true });
+      return;
+    }
+
+    const targetUser = interaction.options.getUser('user');
+    const rankName = interaction.options.getString('rank') || '';
+
+    if (sub === 'assign') {
+      if (!RANKS.includes(rankName)) {
+        await interaction.reply({ content: 'Указанный чин не найден в реестре Министерства. Проверьте корректность наименования.', ephemeral: true });
+        return;
+      }
+
+      const member = await guild.members.fetch(targetUser.id).catch(() => null);
+      if (!member) {
+        await interaction.reply({ content: 'Сотрудник не найден в текущем сервере.', ephemeral: true });
+        return;
+      }
+
+      const role = await ensureRole(guild, rankName, 0x1f6feb);
+      await member.roles.add(role).catch(() => {});
+
+      guildConfig.memberRanks[targetUser.id] = rankName;
+      saveGuildConfig(guild.id, guildConfig);
+
+      await interaction.reply({ content: `Сотруднику ${targetUser} присвоен чин: ${rankName}.` });
+      await sendToLogChannel(guild, `**Назначение чина:** ${interaction.user} присвоил ${targetUser} чин **${rankName}**.`, '#1F6FEB');
+      return;
+    }
+
+    if (sub === 'clear') {
+      const member = await guild.members.fetch(targetUser.id).catch(() => null);
+      if (!member) {
+        await interaction.reply({ content: 'Сотрудник не найден в текущем сервере.', ephemeral: true });
+        return;
+      }
+
+      const currentRank = guildConfig.memberRanks[targetUser.id];
+      if (currentRank) {
+        const role = guild.roles.cache.find(r => r.name === currentRank);
+        if (role) await member.roles.remove(role).catch(() => {});
+      }
+
+      delete guildConfig.memberRanks[targetUser.id];
+      saveGuildConfig(guild.id, guildConfig);
+
+      await interaction.reply({ content: `Сотруднику ${targetUser} снят действующий чин.` });
+      await sendToLogChannel(guild, `**Снятие чина:** ${interaction.user} снял с ${targetUser} текущий чин.`, '#D93B3B');
+      return;
+    }
+  }
+
+  if (commandName === 'minjust-position') {
+    const sub = interaction.options.getSubcommand();
+    const guildConfig = ensureGuildConfig(guild.id);
+
+    if (sub === 'list') {
+      const embed = new EmbedBuilder()
+        .setColor(botColor)
+        .setTitle('Должности Министерства юстиции')
+        .setDescription(POSITIONS.map((position, idx) => `${idx + 1}. ${position}`).join('\n'))
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    if (!hasAdminAccess(interaction.member)) {
+      await interaction.reply({ content: 'У текущего служащего недостаточно полномочий для назначения должностей.', ephemeral: true });
+      return;
+    }
+
+    const targetUser = interaction.options.getUser('user');
+    const positionName = interaction.options.getString('position') || '';
+
+    if (sub === 'assign') {
+      if (!POSITIONS.includes(positionName)) {
+        await interaction.reply({ content: 'Указанная должность отсутствует в реестре Министерства. Проверьте формулировку.', ephemeral: true });
+        return;
+      }
+
+      const member = await guild.members.fetch(targetUser.id).catch(() => null);
+      if (!member) {
+        await interaction.reply({ content: 'Сотрудник не найден в текущем сервере.', ephemeral: true });
+        return;
+      }
+
+      const role = await ensureRole(guild, positionName, 0x10b981);
+      await member.roles.add(role).catch(() => {});
+
+      guildConfig.memberPositions[targetUser.id] = positionName;
+      saveGuildConfig(guild.id, guildConfig);
+
+      await interaction.reply({ content: `Сотруднику ${targetUser} назначена должность: ${positionName}.` });
+      await sendToLogChannel(guild, `**Назначение должности:** ${interaction.user} назначил ${targetUser} на должность **${positionName}**.`, '#10B981');
+      return;
+    }
+
+    if (sub === 'clear') {
+      const member = await guild.members.fetch(targetUser.id).catch(() => null);
+      if (!member) {
+        await interaction.reply({ content: 'Сотрудник не найден в текущем сервере.', ephemeral: true });
+        return;
+      }
+
+      const currentPosition = guildConfig.memberPositions[targetUser.id];
+      if (currentPosition) {
+        const role = guild.roles.cache.find(r => r.name === currentPosition);
+        if (role) await member.roles.remove(role).catch(() => {});
+      }
+
+      delete guildConfig.memberPositions[targetUser.id];
+      saveGuildConfig(guild.id, guildConfig);
+
+      await interaction.reply({ content: `Сотруднику ${targetUser} снята действующая должность.` });
+      await sendToLogChannel(guild, `**Снятие должности:** ${interaction.user} снял с ${targetUser} должность.`, '#D93B3B');
+      return;
+    }
+  }
+
+  if (commandName === 'minjust-config') {
+    const sub = interaction.options.getSubcommand();
+
+    if (sub === 'view') {
+      const config = ensureGuildConfig(guild.id);
+      const embed = new EmbedBuilder()
+        .setColor(botColor)
+        .setTitle('Настройки ведомства')
+        .addFields(
+          { name: 'Название', value: config.name, inline: true },
+          { name: 'Город', value: config.city, inline: true },
+          { name: 'Валюта', value: config.currency, inline: true },
+          { name: 'Цвет', value: config.color, inline: true },
+          { name: 'Канал приветствий', value: config.welcomeChannelId ? `<#${config.welcomeChannelId}>` : 'Не задан', inline: true },
+          { name: 'Канал логов', value: config.logChannelId ? `<#${config.logChannelId}>` : 'Не задан', inline: true },
+          { name: 'Роль администратора', value: config.adminRoleId ? `<@&${config.adminRoleId}>` : 'Не задана', inline: true },
+          { name: 'Подпись', value: config.footerText || 'Отсутствует', inline: false }
+        )
+        .setTimestamp();
+
+      await interaction.reply({ embeds: [embed] });
+      return;
+    }
+
+    if (!hasAdminAccess(interaction.member)) {
+      await interaction.reply({ content: 'У текущего служащего недостаточно полномочий для изменения настроек ведомства.', ephemeral: true });
+      return;
+    }
+
+    const key = interaction.options.getString('key');
+    const value = interaction.options.getString('value');
+    const config = ensureGuildConfig(guild.id);
+
+    if (key === 'welcomeChannel' || key === 'logChannel' || key === 'adminRole') {
+      const target = value.replace(/[<>#&]/g, '').trim();
+      if (key === 'welcomeChannel') config.welcomeChannelId = target;
+      if (key === 'logChannel') config.logChannelId = target;
+      if (key === 'adminRole') config.adminRoleId = target;
+    } else {
+      config[key] = value;
+    }
+
+    if (key === 'name') config.name = value;
+    if (key === 'city') config.city = value;
+    if (key === 'currency') {
+      config.currency = value;
+      config.currencyPlural = `${value}ов`;
+    }
+    if (key === 'color') config.color = value;
+    if (key === 'welcomeMessage') config.welcomeMessage = value;
+    if (key === 'footerText') config.footerText = value;
+
+    saveGuildConfig(guild.id, config);
+    await interaction.reply({ content: `Параметр **${key}** обновлён.` });
+    await sendToLogChannel(guild, `**Изменение настроек ведомства:** ${interaction.user} обновил параметр **${key}**.`, '#1F6FEB');
+    return;
+  }
+});
+
+client.login(process.env.DISCORD_TOKEN);
 
 module.exports = {
-  ensureDirectory,
-  ensureGuildConfig,
-  saveGuildConfig,
-  getBalanceData,
-  saveBalanceData,
-  getMemberBalance,
-  setMemberBalance,
-  updateMemberBalance,
-  normalizeRankName,
-  normalizePositionName,
-  defaultGuildConfig,
-  getGuildConfigPath,
-  getBalancePath
+  client,
+  RANKS,
+  POSITIONS,
+  hasAdminAccess,
+  ensureRole
 };
-

@@ -1,36 +1,117 @@
-const { REST, Routes } = require('discord.js');
-const { config } = require('dotenv');
-const { getSlashCommands } = require('./commands');
+const fs = require('fs');
+const path = require('path');
 
-config();
+const DATA_DIR = path.join(__dirname, '..', 'data');
+const GUILDS_DIR = path.join(DATA_DIR, 'guilds');
+const BALANCES_DIR = path.join(DATA_DIR, 'balances');
 
-const commands = getSlashCommands();
-const rest = new REST({ version: '10' }).setToken(process.env.DISCORD_TOKEN || '');
-
-(async () => {
-  try {
-    console.log('Регистрация команд Минюста...');
-
-    const guildId = process.env.GUILD_ID;
-    const clientId = process.env.CLIENT_ID;
-
-    if (!clientId || !process.env.DISCORD_TOKEN) {
-      throw new Error('Не заданы DISCORD_TOKEN или CLIENT_ID. Проверьте .env');
-    }
-
-    if (guildId) {
-      await rest.put(Routes.applicationGuildCommands(clientId, guildId), {
-        body: commands
-      });
-      console.log('Команды зарегистрированы только для текущего сервера.');
-    } else {
-      await rest.put(Routes.applicationCommands(clientId), {
-        body: commands
-      });
-      console.log('Команды зарегистрированы глобально.');
-    }
-  } catch (error) {
-    console.error('Ошибка регистрации команд:', error);
+const ensureDirectory = (dir) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
   }
-})();
+};
 
+const ensureFile = (filePath, defaultValue) => {
+  ensureDirectory(path.dirname(filePath));
+
+  if (!fs.existsSync(filePath)) {
+    fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2), 'utf8');
+  }
+};
+
+const readJson = (filePath, fallback) => {
+  if (!fs.existsSync(filePath)) return fallback;
+
+  try {
+    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+  } catch {
+    return fallback;
+  }
+};
+
+const writeJson = (filePath, data) => {
+  ensureDirectory(path.dirname(filePath));
+  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
+};
+
+const defaultGuildConfig = (guildId) => ({
+  guildId,
+  name: 'Министерство юстиции Российской Федерации',
+  city: 'Санкт-Петербург',
+  currency: 'балл',
+  currencyPlural: 'баллов',
+  color: '#1F6FEB',
+  welcomeMessage: 'Добро пожаловать в Министерство юстиции Санкт-Петербурга. Ваша служба начинается с соблюдения регламента ведомства.',
+  footerText: 'Министерство юстиции Российской Федерации',
+  welcomeChannelId: null,
+  logChannelId: null,
+  adminRoleId: null,
+  memberRanks: {},
+  memberPositions: {}
+});
+
+const getGuildConfigPath = (guildId) => path.join(GUILDS_DIR, `${guildId}.json`);
+const getBalancePath = (guildId) => path.join(BALANCES_DIR, `${guildId}.json`);
+
+const ensureGuildConfig = (guildId) => {
+  const filePath = getGuildConfigPath(guildId);
+  const config = readJson(filePath, defaultGuildConfig(guildId));
+
+  config.memberRanks = config.memberRanks || {};
+  config.memberPositions = config.memberPositions || {};
+  config.currencyPlural = config.currencyPlural || `${config.currency || 'балл'}ов`;
+
+  writeJson(filePath, config);
+  return config;
+};
+
+const saveGuildConfig = (guildId, config) => {
+  writeJson(getGuildConfigPath(guildId), config);
+};
+
+const getBalanceData = (guildId) => {
+  const filePath = getBalancePath(guildId);
+  ensureFile(filePath, {});
+  return readJson(filePath, {});
+};
+
+const saveBalanceData = (guildId, data) => {
+  writeJson(getBalancePath(guildId), data);
+};
+
+const getMemberBalance = (guildId, memberId) => {
+  const data = getBalanceData(guildId);
+  return data[memberId] || { balance: 0 };
+};
+
+const setMemberBalance = (guildId, memberId, balance, metadata = {}) => {
+  const data = getBalanceData(guildId);
+  data[memberId] = { balance, ...metadata };
+  saveBalanceData(guildId, data);
+  return data[memberId];
+};
+
+const adjustBalance = (guildId, memberId, delta, metadata = {}) => {
+  const current = getMemberBalance(guildId, memberId);
+  const next = Math.max(0, (current.balance || 0) + delta);
+  return setMemberBalance(guildId, memberId, next, metadata);
+};
+
+const normalizeRankName = (name) => (name || '').trim();
+const normalizePositionName = (name) => (name || '').trim();
+
+module.exports = {
+  ensureGuildConfig,
+  saveGuildConfig,
+  getBalanceData,
+  saveBalanceData,
+  getMemberBalance,
+  setMemberBalance,
+  adjustBalance,
+  normalizeRankName,
+  normalizePositionName,
+  defaultGuildConfig,
+  getGuildConfigPath,
+  getBalancePath,
+  ensureDirectory
+};
