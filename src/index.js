@@ -2,7 +2,8 @@ const fs = require('fs');
 const path = require('path');
 const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, Events } = require('discord.js');
 const { config } = require('dotenv');
-const { RANKS, POSITIONS, DEPARTMENTS, getSlashCommands } = require('./commands');
+const { RANKS, POSITIONS, DEPARTMENTS } = require('./commands');
+const { registerSlashCommands } = require('./deploy-commands');
 
 config();
 
@@ -47,7 +48,7 @@ const defaultGuildConfig = (guildId) => ({
   currency: 'балл',
   currencyPlural: 'баллов',
   color: '#1F6FEB',
-  welcomeMessage: 'Добро пожаловать в Министерство юстиции Санкт-Петербурга. Ваша служба начинается с соблюдения регламента ведомства.',
+  welcomeMessage: 'Добро пожаловать в Министерство юстиции Санкт-Петербурга. Ваша служба начинается с соблюдения регламента и дисциплины.',
   footerText: 'Министерство юстиции Российской Федерации',
   welcomeChannelId: null,
   logChannelId: null,
@@ -156,8 +157,8 @@ const buildStructureEmbed = () => {
       { name: 'Руководство', value: 'Министр юстиции РФ\nПервый заместитель\nСтатс-секретарь — заместитель Министра', inline: false },
       { name: 'Аппарат', value: 'Аппарат Министра\nУправление делами\nКадровая служба', inline: false },
       { name: 'Правовой блок', value: 'Правовой департамент\nДепартамент международного права\nДепартамент уголовно-правовой политики', inline: false },
-      { name: 'Административный блок', value: 'Департамент исполнения и контроля\nДепартамент государственной регистрации\nОтдел внутреннего аудита', inline: false },
-      { name: 'Поддержка', value: 'Юридическая служба федеральных органов\nУправление документооборота\nОтдел служебных проверок', inline: false }
+      { name: 'Административный блок', value: 'Департамент исполнения и контроля\nДепартамент государственной регистрации\nДепартамент правовой экспертизы', inline: false },
+      { name: 'Поддержка', value: 'Юридическая служба федеральных органов\nУправление документооборота\nОтдел служебной проверки', inline: false }
     )
     .setTimestamp();
 };
@@ -199,7 +200,7 @@ const buildProfileEmbed = async (guild, targetUser) => {
       { name: 'Подразделение', value: department, inline: true },
       { name: 'Баланс', value: `${balance} ${config.currencyPlural}`, inline: true },
       { name: 'Дисциплинарные записи', value: String(disciplinary.length), inline: true },
-      { name: 'Статус', value: member && member.roles.cache.some((role) => role.name.includes('Министерство') || role.name.includes('Юстиции')) ? 'Служба ведётся' : 'Проверка статуса не подтверждена', inline: false }
+      { name: 'Статус', value: member && member.roles.cache.some((role) => role.name.includes('Министерство') || role.name.includes('Юстиции')) ? 'Служба ведётся в структуре ведомства' : 'Статус не подтверждён', inline: true }
     )
     .setFooter({ text: config.footerText || 'Министерство юстиции Российской Федерации' })
     .setTimestamp();
@@ -229,7 +230,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
   const channel = member.guild.channels.cache.get(config.welcomeChannelId) || await member.guild.channels.fetch(config.welcomeChannelId).catch(() => null);
   if (!channel || !channel.isTextBased()) return;
 
-  const welcomeText = config.welcomeMessage || 'Добро пожаловать в Министерство юстиции Российской Федерации. Ваша служба начинается с соблюдения регламента ведомства.';
+  const welcomeText = config.welcomeMessage || 'Добро пожаловать в Министерство юстиции Российской Федерации. Ваша служба начинается с соблюдения регламента.';
   await channel.send({ content: `${member.toString()} ${welcomeText}` }).catch(() => {});
 });
 
@@ -575,7 +576,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     if (subcommand === 'assign') {
       const departmentName = interaction.options.getString('department');
       if (!DEPARTMENTS.includes(departmentName)) {
-        await interaction.reply({ content: 'Указанное подразделение не найдено в реестре ведомства.', ephemeral: true });
+        await interaction.reply({ content: 'Указан��ое подразделение не найдено в реестре ведомства.', ephemeral: true });
         return;
       }
 
@@ -673,7 +674,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       const embed = new EmbedBuilder()
         .setColor('#D93B3B')
         .setTitle('Дисциплинарный реестр')
-        .setDescription(allRecords.map(([userId, records]) => `**<@${userId}>**\n${records.map((record) => `- ${record.type}: ${record.reason} (${new Date(record.date).toLocaleDateString('ru-RU')})`).join('\n')}`).join('\n\n'))
+        .setDescription(allRecords.map(([userId, records]) => `**<@${userId}>**\n${records.map((record) => `- ${record.type}: ${record.reason} (${new Date(record.date).toLocaleDateString('ru-RU')} )`).join('\n')}`).join('\n\n'))
         .setTimestamp();
 
       await interaction.reply({ embeds: [embed] });
@@ -767,6 +768,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
+registerSlashCommands().catch(() => {});
 client.login(process.env.DISCORD_TOKEN);
 
 module.exports = {
