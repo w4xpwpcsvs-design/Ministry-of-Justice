@@ -1,172 +1,757 @@
-const fs = require('fs');
-const path = require('path');
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Министерство юстиции — Государственный реестр</title>
+    <style>
+      :root {
+        --bg: #07151f;
+        --bg-2: #0d1f2d;
+        --panel: rgba(18, 35, 49, 0.96);
+        --panel-soft: rgba(24, 45, 61, 0.98);
+        --panel-strong: #142c3f;
+        --line: rgba(201, 170, 102, 0.35);
+        --line-strong: rgba(201, 170, 102, 0.58);
+        --navy: #11283e;
+        --navy-2: #183d5f;
+        --gold: #c9a66a;
+        --gold-soft: #e2c98f;
+        --text: #ebf3fa;
+        --muted: #afc5d8;
+        --success: #1d8f63;
+        --danger: #bf4d4d;
+        --warning: #e0a94b;
+        --shadow: 0 18px 42px rgba(0, 0, 0, 0.32);
+      }
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
-const GUILDS_DIR = path.join(DATA_DIR, 'guilds');
-const BALANCES_DIR = path.join(DATA_DIR, 'balances');
+      * { box-sizing: border-box; }
 
-const DEFAULT_ACCESS = {
-  owner: [],
-  minister: [],
-  leadership: [],
-  department_admin: [],
-  staff: []
-};
+      html, body {
+        margin: 0;
+        min-height: 100%;
+        font-family: "Segoe UI", Arial, sans-serif;
+        background:
+          radial-gradient(circle at top left, rgba(201, 166, 106, 0.1), transparent 22%),
+          linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+        color: var(--text);
+      }
 
-const ensureDirectory = (dir) => {
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-};
+      body {
+        min-height: 100vh;
+      }
 
-const ensureFile = (filePath, defaultValue) => {
-  ensureDirectory(path.dirname(filePath));
-  if (!fs.existsSync(filePath)) fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2), 'utf8');
-};
+      .shell {
+        display: grid;
+        grid-template-columns: 280px 1fr;
+        min-height: 100vh;
+      }
 
-const readJson = (filePath, fallback) => {
-  if (!fs.existsSync(filePath)) return fallback;
-  try {
-    return JSON.parse(fs.readFileSync(filePath, 'utf8'));
-  } catch {
-    return fallback;
-  }
-};
+      .sidebar {
+        background: linear-gradient(180deg, rgba(12, 29, 41, 0.98), rgba(16, 36, 52, 0.98));
+        border-right: 1px solid var(--line);
+        box-shadow: inset -1px 0 0 rgba(255,255,255,0.03);
+        padding: 24px 18px;
+      }
 
-const writeJson = (filePath, data) => {
-  ensureDirectory(path.dirname(filePath));
-  fs.writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf8');
-};
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px 12px 20px;
+        border-bottom: 1px solid var(--line);
+        margin-bottom: 18px;
+      }
 
-const defaultGuildConfig = (guildId) => ({
-  guildId,
-  guildOwnerId: null,
-  name: 'Министерство юстиции Российской Федерации',
-  city: 'Санкт-Петербург',
-  currency: 'балл',
-  currencyPlural: 'баллов',
-  color: '#1F6FEB',
-  welcomeMessage: 'Добро пожаловать в Министерство юстиции Российской Федерации. Ваша служба начинается с соблюдения регламента и дисциплины.',
-  footerText: 'Министерство юстиции Российской Федерации',
-  welcomeChannelId: null,
-  logChannelId: null,
-  adminRoleId: null,
-  access: { ...DEFAULT_ACCESS },
-  employees: [],
-  departments: [],
-  positions: [],
-  ranks: [],
-  orders: [],
-  tickets: [],
-  memberRanks: {},
-  memberPositions: {},
-  memberDepartments: {},
-  disciplinaryRecords: {}
-});
+      .brand-mark {
+        width: 46px;
+        height: 46px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        letter-spacing: 0.06em;
+        color: var(--navy);
+        background: linear-gradient(135deg, var(--gold-soft), var(--gold));
+        box-shadow: inset 0 0 0 1px rgba(17,40,62,0.2);
+      }
 
-const getGuildConfigPath = (guildId) => path.join(GUILDS_DIR, `${guildId}.json`);
-const getBalancePath = (guildId) => path.join(BALANCES_DIR, `${guildId}.json`);
+      .brand-text small {
+        display: block;
+        color: var(--muted);
+        letter-spacing: 0.12em;
+        font-size: 10px;
+        text-transform: uppercase;
+      }
 
-const ensureGuildConfig = (guildId) => {
-  const filePath = getGuildConfigPath(guildId);
-  const config = readJson(filePath, defaultGuildConfig(guildId));
-  config.guildOwnerId = config.guildOwnerId || null;
-  config.access = { ...DEFAULT_ACCESS, ...(config.access || {}) };
-  Object.keys(DEFAULT_ACCESS).forEach((key) => {
-    config.access[key] = Array.isArray(config.access[key]) ? config.access[key] : [];
-  });
+      .brand-text strong {
+        font-size: 15px;
+        letter-spacing: 0.02em;
+      }
 
-  config.employees = Array.isArray(config.employees) ? config.employees : [];
-  config.departments = Array.isArray(config.departments) ? config.departments : [];
-  config.positions = Array.isArray(config.positions) ? config.positions : [];
-  config.ranks = Array.isArray(config.ranks) ? config.ranks : [];
-  config.orders = Array.isArray(config.orders) ? config.orders : [];
-  config.tickets = Array.isArray(config.tickets) ? config.tickets : [];
-  config.memberRanks = config.memberRanks || {};
-  config.memberPositions = config.memberPositions || {};
-  config.memberDepartments = config.memberDepartments || {};
-  config.disciplinaryRecords = config.disciplinaryRecords || {};
+      .nav {
+        display: grid;
+        gap: 8px;
+      }
 
-  if (!config.currencyPlural) config.currencyPlural = `${config.currency || 'балл'}ов`;
+      .nav button {
+        border: 1px solid transparent;
+        background: transparent;
+        color: var(--text);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        width: 100%;
+        padding: 12px 14px;
+        border-radius: 12px;
+        text-align: left;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+      }
 
-  writeJson(filePath, config);
-  return config;
-};
+      .nav button:hover,
+      .nav button.active {
+        background: linear-gradient(90deg, rgba(201,166,106,0.14), rgba(201,166,106,0.03));
+        border-color: var(--line-strong);
+        box-shadow: inset 0 0 0 1px rgba(201,166,106,0.18);
+      }
 
-const saveGuildConfig = (guildId, config) => {
-  writeJson(getGuildConfigPath(guildId), config);
-};
+      .nav button .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--gold);
+        box-shadow: 0 0 12px rgba(201,166,106,0.8);
+      }
 
-const getBalanceData = (guildId) => {
-  const filePath = getBalancePath(guildId);
-  ensureFile(filePath, {});
-  return readJson(filePath, {});
-};
+      .content {
+        padding: 20px 24px 28px;
+      }
 
-const saveBalanceData = (guildId, data) => {
-  writeJson(getBalancePath(guildId), data);
-};
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 18px;
+        background: linear-gradient(90deg, rgba(17,40,62,0.9), rgba(24,61,95,0.9));
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px 22px;
+        box-shadow: var(--shadow);
+      }
 
-const getMemberBalance = (guildId, memberId) => {
-  const data = getBalanceData(guildId);
-  return data[memberId] || { balance: 0 };
-};
+      .topbar h1 {
+        margin: 0;
+        font-size: clamp(22px, 2vw, 30px);
+        letter-spacing: 0.03em;
+      }
 
-const setMemberBalance = (guildId, memberId, balance, metadata = {}) => {
-  const data = getBalanceData(guildId);
-  data[memberId] = { balance, ...metadata };
-  saveBalanceData(guildId, data);
-  return data[memberId];
-};
+      .status-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 8px 14px;
+        border-radius: 999px;
+        border: 1px solid rgba(201,166,106,0.5);
+        background: rgba(201,166,106,0.06);
+        color: var(--gold-soft);
+        font-size: 13px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
 
-const adjustBalance = (guildId, memberId, delta, metadata = {}) => {
-  const current = getMemberBalance(guildId, memberId);
-  const next = Math.max(0, (current.balance || 0) + delta);
-  return setMemberBalance(guildId, memberId, next, metadata);
-};
+      .status-pill::before {
+        content: "";
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--success);
+        box-shadow: 0 0 12px rgba(29, 143, 99, 0.8);
+      }
 
-const getBotOwnerId = () => process.env.BOT_OWNER_ID || process.env.OWNER_ID || '1225811175154122755';
+      .panel {
+        display: none;
+        margin-top: 20px;
+      }
 
-const getAccessEntry = (guildId, userId) => {
-  const config = ensureGuildConfig(guildId);
-  const access = config.access || { ...DEFAULT_ACCESS };
-  for (const [role, users] of Object.entries(access)) {
-    if (Array.isArray(users) && users.some((id) => String(id) === String(userId))) {
-      return { role, userId };
-    }
-  }
-  return null;
-};
+      .panel.active {
+        display: block;
+      }
 
-const setAccessEntry = (guildId, userId, role, enabled = true) => {
-  const config = ensureGuildConfig(guildId);
-  const access = config.access || { ...DEFAULT_ACCESS };
+      .grid {
+        display: grid;
+        gap: 18px;
+      }
 
-  Object.keys(access).forEach((key) => {
-    access[key] = Array.isArray(access[key]) ? access[key].filter((id) => String(id) !== String(userId)) : [];
-  });
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(170px, 1fr));
+        gap: 16px;
+      }
 
-  if (enabled && role && access[role]) {
-    access[role] = Array.from(new Set([...(access[role] || []), String(userId)]));
-  }
+      .stat {
+        background: linear-gradient(180deg, rgba(22, 42, 60, 0.9), rgba(16, 31, 45, 0.9));
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 16px 18px;
+        box-shadow: var(--shadow);
+      }
 
-  config.access = { ...DEFAULT_ACCESS, ...access };
-  saveGuildConfig(guildId, config);
-  return config.access;
-};
+      .stat .label {
+        color: var(--muted);
+        text-transform: uppercase;
+        letter-spacing: 0.1em;
+        font-size: 11px;
+      }
 
-module.exports = {
-  ensureDirectory,
-  ensureGuildConfig,
-  saveGuildConfig,
-  getBalanceData,
-  saveBalanceData,
-  getMemberBalance,
-  setMemberBalance,
-  adjustBalance,
-  defaultGuildConfig,
-  getGuildConfigPath,
-  getBalancePath,
-  getAccessEntry,
-  setAccessEntry,
-  getBotOwnerId,
-  DEFAULT_ACCESS
-};
+      .stat .value {
+        margin-top: 12px;
+        font-size: clamp(30px, 2vw, 38px);
+        font-weight: 700;
+        color: var(--gold-soft);
+      }
+
+      .stat .hint {
+        margin-top: 6px;
+        color: var(--muted);
+        font-size: 11px;
+      }
+
+      .card {
+        background: linear-gradient(180deg, rgba(20, 38, 53, 0.95), rgba(16, 31, 45, 0.95));
+        border: 1px solid var(--line);
+        border-radius: 18px;
+        padding: 18px 20px;
+        box-shadow: var(--shadow);
+      }
+
+      .card h2, .card h3 {
+        margin: 0 0 14px;
+        font-weight: 700;
+      }
+
+      .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 16px;
+      }
+
+      .card-header .eyebrow {
+        color: var(--gold-soft);
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+        font-size: 11px;
+      }
+
+      .two-col {
+        display: grid;
+        grid-template-columns: 1.1fr 1fr;
+        gap: 18px;
+      }
+
+      form {
+        display: grid;
+        gap: 12px;
+      }
+
+      input, select, textarea, button {
+        width: 100%;
+        border-radius: 12px;
+        border: 1px solid rgba(201,166,106,0.28);
+        background: rgba(9,19,28,0.78);
+        color: var(--text);
+        font: inherit;
+      }
+
+      input, select, textarea {
+        padding: 12px 14px;
+      }
+
+      textarea {
+        min-height: 120px;
+        resize: vertical;
+      }
+
+      button.primary, button.danger, button.secondary {
+        cursor: pointer;
+        padding: 12px 16px;
+        font-weight: 600;
+        transition: transform 0.15s ease, filter 0.15s ease;
+      }
+
+      button.primary:hover, button.danger:hover, button.secondary:hover {
+        transform: translateY(-1px);
+        filter: brightness(1.04);
+      }
+
+      button.primary {
+        background: linear-gradient(135deg, var(--gold), var(--gold-soft));
+        border-color: rgba(201,166,106,0.8);
+        color: var(--navy);
+      }
+
+      button.secondary {
+        background: rgba(255,255,255,0.03);
+        color: var(--text);
+      }
+
+      button.danger {
+        background: linear-gradient(135deg, rgba(191,77,77,0.9), rgba(172,57,57,0.9));
+        border-color: rgba(191,77,77,0.8);
+        color: var(--text);
+      }
+
+      .small {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 12px;
+        overflow: hidden;
+        border-radius: 12px;
+      }
+
+      th, td {
+        padding: 12px 10px;
+        border-bottom: 1px solid rgba(201,166,106,0.15);
+        text-align: left;
+        vertical-align: top;
+      }
+
+      th {
+        color: var(--gold-soft);
+        background: rgba(201,166,106,0.06);
+        font-size: 12px;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      tr:last-child td {
+        border-bottom: none;
+      }
+
+      .access-list {
+        display: grid;
+        gap: 10px;
+      }
+
+      .access-role {
+        padding: 10px 12px;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        background: rgba(255,255,255,0.02);
+      }
+
+      .access-role strong {
+        color: var(--gold-soft);
+      }
+
+      .note {
+        color: var(--muted);
+      }
+
+      @media (max-width: 980px) {
+        .shell {
+          grid-template-columns: 1fr;
+        }
+
+        .sidebar {
+          border-right: none;
+          border-bottom: 1px solid var(--line);
+        }
+
+        .stats {
+          grid-template-columns: repeat(2, minmax(150px, 1fr));
+        }
+
+        .two-col {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 600px) {
+        .content {
+          padding: 16px;
+        }
+
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+
+        .stats {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <div class="brand-mark">МЮ</div>
+          <div class="brand-text">
+            <small>Российской Федерации</small>
+            <strong>Министерство юстиции</strong>
+          </div>
+        </div>
+
+        <div class="nav">
+          <button class="active" data-panel="overview"><span class="dot"></span>Панель управления</button>
+          <button data-panel="access"><span class="dot"></span>Доступы</button>
+          <button data-panel="employees"><span class="dot"></span>Сотрудники</button>
+          <button data-panel="departments"><span class="dot"></span>Департаменты</button>
+          <button data-panel="positions"><span class="dot"></span>Должности</button>
+          <button data-panel="ranks"><span class="dot"></span>Чины</button>
+          <button data-panel="orders"><span class="dot"></span>Приказы</button>
+          <button data-panel="tickets"><span class="dot"></span>Обращения</button>
+        </div>
+      </aside>
+
+      <main class="content">
+        <header class="topbar">
+          <h1>Государственный реестр ведомства</h1>
+          <div class="status-pill">Система активна</div>
+        </header>
+
+        <section id="overview" class="panel active">
+          <div class="stats">
+            <div class="stat">
+              <div class="label">Сотрудники</div>
+              <div id="statEmployees" class="value">0</div>
+              <div class="hint">Служебный состав</div>
+            </div>
+            <div class="stat">
+              <div class="label">Департаменты</div>
+              <div id="statDepartments" class="value">0</div>
+              <div class="hint">Структурные единицы</div>
+            </div>
+            <div class="stat">
+              <div class="label">Должности</div>
+              <div id="statPositions" class="value">0</div>
+              <div class="hint">Реестр должностей</div>
+            </div>
+            <div class="stat">
+              <div class="label">Обращения</div>
+              <div id="statTickets" class="value">0</div>
+              <div class="hint">Новые обращения</div>
+            </div>
+          </div>
+        </section>
+
+        <section id="access" class="panel">
+          <div class="card">
+            <div class="card-header">
+              <h2>Руководство и доступы</h2>
+              <span class="eyebrow">Управление полномочиями</span>
+            </div>
+            <div class="two-col">
+              <form id="accessForm">
+                <input id="accessUserId" type="text" placeholder="Discord user ID" required />
+                <select id="accessRole">
+                  <option value="owner">Владелец</option>
+                  <option value="minister">Министр</option>
+                  <option value="leadership">Руководство</option>
+                  <option value="department_admin">Администратор отдела</option>
+                  <option value="staff">Сотрудник</option>
+                </select>
+                <button type="submit" class="primary">Назначить доступ</button>
+              </form>
+
+              <div>
+                <h3>Текущие уровни доступа</h3>
+                <div id="accessTable" class="access-list"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section id="employees" class="panel">
+          <div class="card">
+            <div class="card-header">
+              <h2>Служебный состав</h2>
+              <span class="eyebrow">Регистрация сотрудников</span>
+            </div>
+            <form id="employeeForm">
+              <input id="employeeName" type="text" placeholder="ФИО сотрудника" required />
+              <input id="employeeDiscord" type="text" placeholder="Discord ID" />
+              <input id="employeeDepartment" type="text" placeholder="Подразделение" />
+              <input id="employeePosition" type="text" placeholder="Должность" />
+              <input id="employeeRank" type="text" placeholder="Чин" />
+              <button type="submit" class="primary">Добавить сотрудника</button>
+            </form>
+            <div id="employeesTable"></div>
+          </div>
+        </section>
+
+        <section id="departments" class="panel">
+          <div class="card">
+            <div class="card-header">
+              <h2>Департаменты</h2>
+              <span class="eyebrow">Структура ведомства</span>
+            </div>
+            <form id="departmentForm">
+              <input id="departmentName" type="text" placeholder="Название департамента" required />
+              <button type="submit" class="primary">Добавить департамент</button>
+            </form>
+            <div id="departmentsTable"></div>
+          </div>
+        </section>
+
+        <section id="positions" class="panel">
+          <div class="card">
+            <div class="card-header">
+              <h2>Должности</h2>
+              <span class="eyebrow">Реестр должностей</span>
+            </div>
+            <form id="positionForm">
+              <input id="positionName" type="text" placeholder="Название должности" required />
+              <button type="submit" class="primary">Добавить должность</button>
+            </form>
+            <div id="positionsTable"></div>
+          </div>
+        </section>
+
+        <section id="ranks" class="panel">
+          <div class="card">
+            <div class="card-header">
+              <h2>Классные чины</h2>
+              <span class="eyebrow">Табель чинов</span>
+            </div>
+            <form id="rankForm">
+              <input id="rankName" type="text" placeholder="Название чина" required />
+              <button type="submit" class="primary">Добавить чин</button>
+            </form>
+            <div id="ranksTable"></div>
+          </div>
+        </section>
+
+        <section id="orders" class="panel">
+          <div class="card">
+            <div class="card-header">
+              <h2>Приказы и распоряжения</h2>
+              <span class="eyebrow">Официальный журнал</span>
+            </div>
+            <form id="orderForm">
+              <input id="orderTitle" type="text" placeholder="Название приказа" required />
+              <textarea id="orderText" placeholder="Текст приказа" required></textarea>
+              <input id="orderAuthor" type="text" placeholder="Автор приказа" />
+              <button type="submit" class="primary">Зарегистрировать приказ</button>
+            </form>
+            <div id="ordersTable"></div>
+          </div>
+        </section>
+
+        <section id="tickets" class="panel">
+          <div class="card">
+            <div class="card-header">
+              <h2>Служебные обращения</h2>
+              <span class="eyebrow">Реестр запросов</span>
+            </div>
+            <form id="ticketForm">
+              <input id="ticketTitle" type="text" placeholder="Заголовок обращения" required />
+              <textarea id="ticketDescription" placeholder="Описание обращения" required></textarea>
+              <input id="ticketCategory" type="text" placeholder="Категория" value="Общие обращения" />
+              <button type="submit" class="primary">Создать обращение</button>
+            </form>
+            <div id="ticketsTable"></div>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const guildId = 'server';
+      const actorId = '1225811175154122755';
+
+      async function api(url, options = {}) {
+        const response = await fetch(url, {
+          headers: { 'Content-Type': 'application/json' },
+          ...options
+        });
+        return response.json();
+      }
+
+      function renderTable(targetId, items, columns, actions = []) {
+        const root = document.getElementById(targetId);
+        if (!items || !items.length) {
+          root.innerHTML = '<div class="small">Данных нет.</div>';
+          return;
+        }
+
+        const headers = columns.map((col) => `<th>${col}</th>`).join('');
+        const actionHeader = actions.length ? '<th>Действие</th>' : '';
+        const rows = items.map((item) => {
+          const cells = columns.map((key) => `<td>${item[key] || '—'}</td>`).join('');
+          const actionCells = actions.length ? `<td>${actions.map((action) => `<button class="danger" data-action="${action}" data-id="${item.id}">${action === 'deleteDepartment' ? 'Удалить' : action === 'deletePosition' ? 'Удалить' : action === 'deleteRank' ? 'Удалить' : action === 'deleteOrder' ? 'Удалить' : 'Удалить'}</button>`).join('')}</td>` : '';
+          return `<tr>${cells}${actionCells}</tr>`;
+        }).join('');
+
+        root.innerHTML = `<table><thead><tr>${headers}${actionHeader}</tr></thead><tbody>${rows}</tbody></table>`;
+      }
+
+      async function loadOverview() {
+        const [employees, departments, positions, tickets] = await Promise.all([
+          api(`/api/employees?guildId=${guildId}`),
+          api(`/api/departments?guildId=${guildId}`),
+          api(`/api/positions?guildId=${guildId}`),
+          api(`/api/tickets?guildId=${guildId}`)
+        ]);
+
+        document.getElementById('statEmployees').textContent = (employees || []).length;
+        document.getElementById('statDepartments').textContent = (departments || []).length;
+        document.getElementById('statPositions').textContent = (positions || []).length;
+        document.getElementById('statTickets').textContent = (tickets || []).length;
+      }
+
+      async function loadAccess() {
+        const access = await api(`/api/access?guildId=${guildId}`);
+        const rows = Object.entries(access || {}).map(([role, ids]) => `<div class="access-role"><strong>${role}</strong>: ${(ids || []).join(', ') || '—'}</div>`).join('');
+        document.getElementById('accessTable').innerHTML = rows;
+      }
+
+      async function loadAll() {
+        await loadOverview();
+        await loadAccess();
+
+        const employees = await api(`/api/employees?guildId=${guildId}`);
+        const departments = await api(`/api/departments?guildId=${guildId}`);
+        const positions = await api(`/api/positions?guildId=${guildId}`);
+        const ranks = await api(`/api/ranks?guildId=${guildId}`);
+        const orders = await api(`/api/orders?guildId=${guildId}`);
+        const tickets = await api(`/api/tickets?guildId=${guildId}`);
+
+        renderTable('employeesTable', employees, ['fullName', 'discordId', 'department', 'position', 'rank']);
+        renderTable('departmentsTable', departments, ['name'], ['deleteDepartment']);
+        renderTable('positionsTable', positions, ['name'], ['deletePosition']);
+        renderTable('ranksTable', ranks, ['name'], ['deleteRank']);
+        renderTable('ordersTable', orders, ['title', 'author'], ['deleteOrder']);
+        renderTable('ticketsTable', tickets, ['title', 'category', 'status'], ['deleteTicket']);
+      }
+
+      document.querySelectorAll('.nav button').forEach((button) => {
+        button.addEventListener('click', () => {
+          document.querySelectorAll('.nav button').forEach((btn) => btn.classList.remove('active'));
+          button.classList.add('active');
+          document.querySelectorAll('.panel').forEach((panel) => panel.classList.remove('active'));
+          document.getElementById(button.dataset.panel).classList.add('active');
+        });
+      });
+
+      document.getElementById('accessForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/access', {
+          method: 'POST',
+          body: JSON.stringify({ guildId, actorId, userId: document.getElementById('accessUserId').value.trim(), role: document.getElementById('accessRole').value })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.getElementById('employeeForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/employees', {
+          method: 'POST',
+          body: JSON.stringify({
+            guildId,
+            actorId,
+            fullName: document.getElementById('employeeName').value.trim(),
+            discordId: document.getElementById('employeeDiscord').value.trim(),
+            department: document.getElementById('employeeDepartment').value.trim(),
+            position: document.getElementById('employeePosition').value.trim(),
+            rank: document.getElementById('employeeRank').value.trim()
+          })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.getElementById('departmentForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/departments', {
+          method: 'POST',
+          body: JSON.stringify({ guildId, actorId, name: document.getElementById('departmentName').value.trim() })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.getElementById('positionForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/positions', {
+          method: 'POST',
+          body: JSON.stringify({ guildId, actorId, name: document.getElementById('positionName').value.trim() })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.getElementById('rankForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/ranks', {
+          method: 'POST',
+          body: JSON.stringify({ guildId, actorId, name: document.getElementById('rankName').value.trim() })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.getElementById('orderForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/orders', {
+          method: 'POST',
+          body: JSON.stringify({
+            guildId,
+            actorId,
+            title: document.getElementById('orderTitle').value.trim(),
+            text: document.getElementById('orderText').value.trim(),
+            author: document.getElementById('orderAuthor').value.trim() || 'Ministry'
+          })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.getElementById('ticketForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/tickets', {
+          method: 'POST',
+          body: JSON.stringify({
+            guildId,
+            actorId,
+            title: document.getElementById('ticketTitle').value.trim(),
+            description: document.getElementById('ticketDescription').value.trim(),
+            category: document.getElementById('ticketCategory').value.trim() || 'Общие обращения'
+          })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-action]');
+        if (!button) return;
+        const id = button.dataset.id;
+        const action = button.dataset.action;
+
+        if (action === 'deleteDepartment') await api(`/api/departments/${id}?guildId=${guildId}&userId=${actorId}`, { method: 'DELETE' });
+        if (action === 'deletePosition') await api(`/api/positions/${id}?guildId=${guildId}&userId=${actorId}`, { method: 'DELETE' });
+        if (action === 'deleteRank') await api(`/api/ranks/${id}?guildId=${guildId}&userId=${actorId}`, { method: 'DELETE' });
+        if (action === 'deleteOrder') await api(`/api/orders/${id}?guildId=${guildId}&userId=${actorId}`, { method: 'DELETE' });
+        if (action === 'deleteTicket') await api(`/api/tickets/${id}?guildId=${guildId}&userId=${actorId}`, { method: 'DELETE' });
+
+        await loadAll();
+      });
+
+      loadAll();
+    </script>
+  </body>
+</html>
+
+
