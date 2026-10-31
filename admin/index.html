@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Министерство юстиции — Государственная панель</title>
+    <style>
+      :root {
+        --bg: #07111f;
+        --panel: #0d1d2b;
+        --panel-2: #11293d;
+        --border: #17314d;
+        --text: #edf6ff;
+        --muted: #a8bfd4;
+        --accent: #2f7ef7;
+        --danger: #c93d3d;
+        --success: #26a764;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+        background: var(--bg);
+        color: var(--text);
+      }
+      .topbar {
+        background: linear-gradient(135deg, #14375b, #0f2238);
+        border-bottom: 1px solid var(--border);
+        padding: 18px 24px;
+      }
+      .topbar h1 {
+        margin: 0;
+        font-size: 26px;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        min-height: calc(100vh - 74px);
+      }
+      .sidebar {
+        background: var(--panel);
+        border-right: 1px solid var(--border);
+        padding: 18px 12px;
+      }
+      .nav button {
+        display: block;
+        width: 100%;
+        margin-bottom: 10px;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: transparent;
+        color: var(--text);
+        text-align: left;
+        cursor: pointer;
+      }
+      .nav button.active {
+        background: var(--accent);
+        border-color: var(--accent);
+      }
+      .content {
+        padding: 20px;
+      }
+      .panel {
+        display: none;
+        background: var(--panel);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 18px;
+      }
+      .panel.active {
+        display: block;
+      }
+      .stats {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(150px, 1fr));
+        gap: 16px;
+      }
+      .stat {
+        background: var(--panel-2);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 16px;
+      }
+      .label {
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+      }
+      .value {
+        margin-top: 8px;
+        font-size: 30px;
+        font-weight: bold;
+      }
+      form {
+        display: grid;
+        gap: 10px;
+      }
+      input, select, textarea, button {
+        width: 100%;
+        padding: 10px 12px;
+        border-radius: 8px;
+        border: 1px solid var(--border);
+        background: #0b1827;
+        color: var(--text);
+      }
+      textarea {
+        min-height: 120px;
+      }
+      button.primary {
+        background: var(--accent);
+        border-color: var(--accent);
+        cursor: pointer;
+      }
+      button.danger {
+        background: var(--danger);
+        border-color: var(--danger);
+        cursor: pointer;
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 14px;
+      }
+      th, td {
+        text-align: left;
+        padding: 10px 8px;
+        border-bottom: 1px solid var(--border);
+      }
+      .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      .small {
+        color: var(--muted);
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="topbar">
+      <h1>Министерство юстиции Российской Федерации</h1>
+    </div>
+    <div class="layout">
+      <aside class="sidebar">
+        <div class="nav">
+          <button class="active" data-panel="overview">Панель</button>
+          <button data-panel="access">Доступы</button>
+          <button data-panel="employees">Сотрудники</button>
+          <button data-panel="departments">Департаменты</button>
+          <button data-panel="positions">Должности</button>
+          <button data-panel="ranks">Чины</button>
+          <button data-panel="orders">Приказы</button>
+          <button data-panel="tickets">Обращения</button>
+        </div>
+      </aside>
+      <main class="content">
+        <section id="overview" class="panel active">
+          <h2>Служебная сводка</h2>
+          <div class="stats">
+            <div class="stat"><div class="label">Сотрудники</div><div id="statEmployees" class="value">0</div></div>
+            <div class="stat"><div class="label">Департаменты</div><div id="statDepartments" class="value">0</div></div>
+            <div class="stat"><div class="label">Должности</div><div id="statPositions" class="value">0</div></div>
+            <div class="stat"><div class="label">Обращения</div><div id="statTickets" class="value">0</div></div>
+          </div>
+        </section>
+
+        <section id="access" class="panel">
+          <h2>Руководство и доступ</h2>
+          <div class="grid">
+            <div>
+              <form id="accessForm">
+                <input id="accessUserId" type="text" placeholder="Discord user ID" required />
+                <select id="accessRole">
+                  <option value="owner">Владелец</option>
+                  <option value="minister">Министр</option>
+                  <option value="leadership">Руководство</option>
+                  <option value="department_admin">Администратор отдела</option>
+                  <option value="staff">Сотрудник</option>
+                </select>
+                <button type="submit" class="primary">Назначить доступ</button>
+              </form>
+            </div>
+            <div>
+              <h3>Текущие роли</h3>
+              <div id="accessTable" class="small"></div>
+            </div>
+          </div>
+        </section>
+
+        <section id="employees" class="panel">
+          <h2>Сотрудники</h2>
+          <form id="employeeForm">
+            <input id="employeeName" type="text" placeholder="ФИО сотрудника" required />
+            <input id="employeeDiscord" type="text" placeholder="Discord ID" />
+            <input id="employeeDepartment" type="text" placeholder="Подразделение" />
+            <input id="employeePosition" type="text" placeholder="Должность" />
+            <input id="employeeRank" type="text" placeholder="Чин" />
+            <button type="submit" class="primary">Добавить сотрудника</button>
+          </form>
+          <div id="employeesTable"></div>
+        </section>
+
+        <section id="departments" class="panel">
+          <h2>Департаменты</h2>
+          <form id="departmentForm">
+            <input id="departmentName" type="text" placeholder="Название департамента" required />
+            <button type="submit" class="primary">Добавить департамент</button>
+          </form>
+          <div id="departmentsTable"></div>
+        </section>
+
+        <section id="positions" class="panel">
+          <h2>Должности</h2>
+          <form id="positionForm">
+            <input id="positionName" type="text" placeholder="Название должности" required />
+            <button type="submit" class="primary">Добавить должность</button>
+          </form>
+          <div id="positionsTable"></div>
+        </section>
+
+        <section id="ranks" class="panel">
+          <h2>Классные чины</h2>
+          <form id="rankForm">
+            <input id="rankName" type="text" placeholder="Название чина" required />
+            <button type="submit" class="primary">Добавить чин</button>
+          </form>
+          <div id="ranksTable"></div>
+        </section>
+
+        <section id="orders" class="panel">
+          <h2>Приказы и распоряжения</h2>
+          <form id="orderForm">
+            <input id="orderTitle" type="text" placeholder="Название приказа" required />
+            <textarea id="orderText" placeholder="Текст приказа" required></textarea>
+            <input id="orderAuthor" type="text" placeholder="Автор приказа" />
+            <button type="submit" class="primary">Зарегистрировать приказ</button>
+          </form>
+          <div id="ordersTable"></div>
+        </section>
+
+        <section id="tickets" class="panel">
+          <h2>Служебные обращения</h2>
+          <form id="ticketForm">
+            <input id="ticketTitle" type="text" placeholder="Заголовок обращения" required />
+            <textarea id="ticketDescription" placeholder="Описание обращения" required></textarea>
+            <input id="ticketCategory" type="text" placeholder="Категория" value="Общие обращения" />
+            <button type="submit" class="primary">Создать обращение</button>
+          </form>
+          <div id="ticketsTable"></div>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const guildId = 'server';
+      const actorId = '1225811175154122755';
+
+      async function api(url, options = {}) {
+        const response = await fetch(url, {
+          headers: { 'Content-Type': 'application/json' },
+          ...options
+        });
+        return response.json();
+      }
+
+      function renderTable(targetId, items, columns, actions = []) {
+        const root = document.getElementById(targetId);
+        if (!items || !items.length) {
+          root.innerHTML = '<div class="small">Данных нет.</div>';
+          return;
+        }
+
+        const headers = columns.map((col) => `<th>${col}</th>`).join('');
+        const actionHeader = actions.length ? '<th>Действие</th>' : '';
+        const rows = items.map((item) => {
+          const cells = columns.map((key) => `<td>${item[key] || '—'}</td>`).join('');
+          const actionCells = actions.length ? `<td>${actions.map((action) => `<button class="danger" data-action="${action}" data-id="${item.id}">${action === 'deleteDepartment' ? 'Удалить' : 'Удалить'}</button>`).join('')}</td>` : '';
+          return `<tr>${cells}${actionCells}</tr>`;
+        }).join('');
+
+        root.innerHTML = `<table><thead><tr>${headers}${actionHeader}</tr></thead><tbody>${rows}</tbody></table>`;
+      }
+
+      async function loadOverview() {
+        const [employees, departments, positions, tickets] = await Promise.all([
+          api(`/api/employees?guildId=${guildId}`),
+          api(`/api/departments?guildId=${guildId}`),
+          api(`/api/positions?guildId=${guildId}`),
+          api(`/api/tickets?guildId=${guildId}`)
+        ]);
+
+        document.getElementById('statEmployees').textContent = (employees || []).length;
+        document.getElementById('statDepartments').textContent = (departments || []).length;
+        document.getElementById('statPositions').textContent = (positions || []).length;
+        document.getElementById('statTickets').textContent = (tickets || []).length;
+      }
+
+      async function loadAccess() {
+        const access = await api(`/api/access?guildId=${guildId}`);
+        const rows = Object.entries(access || {}).map(([role, ids]) => `<div><strong>${role}</strong>: ${(ids || []).join(', ') || '—'}</div>`).join('');
+        document.getElementById('accessTable').innerHTML = rows;
+      }
+
+      async function loadAll() {
+        await loadOverview();
+        await loadAccess();
+
+        const employees = await api(`/api/employees?guildId=${guildId}`);
+        const departments = await api(`/api/departments?guildId=${guildId}`);
+        const positions = await api(`/api/positions?guildId=${guildId}`);
+        const ranks = await api(`/api/ranks?guildId=${guildId}`);
+        const orders = await api(`/api/orders?guildId=${guildId}`);
+        const tickets = await api(`/api/tickets?guildId=${guildId}`);
+
+        renderTable('employeesTable', employees, ['fullName', 'discordId', 'department', 'position', 'rank']);
+        renderTable('departmentsTable', departments, ['name'], ['deleteDepartment']);
+        renderTable('positionsTable', positions, ['name'], ['deletePosition']);
+        renderTable('ranksTable', ranks, ['name'], ['deleteRank']);
+        renderTable('ordersTable', orders, ['title', 'author'], ['deleteOrder']);
+        renderTable('ticketsTable', tickets, ['title', 'category', 'status'], ['deleteTicket']);
+      }
+
+      document.querySelectorAll('.nav button').forEach((button) => {
+        button.addEventListener('click', () => {
+          document.querySelectorAll('.nav button').forEach((btn) => btn.classList.remove('active'));
+          button.classList.add('active');
+          document.querySelectorAll('.panel').forEach((panel) => panel.classList.remove('active'));
+          document.getElementById(button.dataset.panel).classList.add('active');
+        });
+      });
+
+      document.getElementById('accessForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/access', {
+          method: 'POST',
+          body: JSON.stringify({ guildId, actorId, userId: document.getElementById('accessUserId').value.trim(), role: document.getElementById('accessRole').value })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.getElementById('employeeForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/employees', {
+          method: 'POST',
+          body: JSON.stringify({
+            guildId,
+            actorId,
+            fullName: document.getElementById('employeeName').value.trim(),
+            discordId: document.getElementById('employeeDiscord').value.trim(),
+            department: document.getElementById('employeeDepartment').value.trim(),
+            position: document.getElementById('employeePosition').value.trim(),
+            rank: document.getElementById('employeeRank').value.trim()
+          })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.getElementById('departmentForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/departments', {
+          method: 'POST',
+          body: JSON.stringify({ guildId, actorId, name: document.getElementById('departmentName').value.trim() })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.getElementById('positionForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/positions', {
+          method: 'POST',
+          body: JSON.stringify({ guildId, actorId, name: document.getElementById('positionName').value.trim() })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.getElementById('rankForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/ranks', {
+          method: 'POST',
+          body: JSON.stringify({ guildId, actorId, name: document.getElementById('rankName').value.trim() })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.getElementById('orderForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/orders', {
+          method: 'POST',
+          body: JSON.stringify({
+            guildId,
+            actorId,
+            title: document.getElementById('orderTitle').value.trim(),
+            text: document.getElementById('orderText').value.trim(),
+            author: document.getElementById('orderAuthor').value.trim() || 'Ministry'
+          })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.getElementById('ticketForm').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        await api('/api/tickets', {
+          method: 'POST',
+          body: JSON.stringify({
+            guildId,
+            actorId,
+            title: document.getElementById('ticketTitle').value.trim(),
+            description: document.getElementById('ticketDescription').value.trim(),
+            category: document.getElementById('ticketCategory').value.trim() || 'Общие обращения'
+          })
+        });
+        event.target.reset();
+        await loadAll();
+      });
+
+      document.addEventListener('click', async (event) => {
+        const button = event.target.closest('[data-action]');
+        if (!button) return;
+        const id = button.dataset.id;
+        const action = button.dataset.action;
+
+        if (action === 'deleteDepartment') await api(`/api/departments/${id}?guildId=${guildId}&userId=${actorId}`, { method: 'DELETE' });
+        if (action === 'deletePosition') await api(`/api/positions/${id}?guildId=${guildId}&userId=${actorId}`, { method: 'DELETE' });
+        if (action === 'deleteRank') await api(`/api/ranks/${id}?guildId=${guildId}&userId=${actorId}`, { method: 'DELETE' });
+        if (action === 'deleteOrder') await api(`/api/orders/${id}?guildId=${guildId}&userId=${actorId}`, { method: 'DELETE' });
+        if (action === 'deleteTicket') await api(`/api/tickets/${id}?guildId=${guildId}&userId=${actorId}`, { method: 'DELETE' });
+
+        await loadAll();
+      });
+
+      loadAll();
+    </script>
+  </body>
+</html>
