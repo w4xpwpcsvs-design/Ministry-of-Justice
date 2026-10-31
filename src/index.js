@@ -1,7 +1,7 @@
 const { Client, GatewayIntentBits, EmbedBuilder, PermissionsBitField, Events } = require('discord.js');
 const { config } = require('dotenv');
 const { ensureGuildConfig, saveGuildConfig, getMemberBalance, setMemberBalance, adjustBalance } = require('./dataStore');
-const { RANKS, POSITIONS, getSlashCommands } = require('./commands');
+const { RANKS, POSITIONS, DEPARTMENTS, getSlashCommands } = require('./commands');
 
 config();
 
@@ -79,6 +79,33 @@ const buildProfileEmbed = async (guild, targetUser) => {
     .setTimestamp();
 };
 
+const buildStructureEmbed = () => new EmbedBuilder()
+  .setColor(botColor)
+  .setTitle('Структура Министерства юстиции Российской Федерации')
+  .setDescription('Служебная схема ведомства и основных структурных подразделений.')
+  .addFields(
+    { name: '1. Руководство', value: 'Министр юстиции Российской Федерации\nПервый заместитель Министра\nСтатс-секретарь — заместитель Министра', inline: false },
+    { name: '2. Аппарат', value: 'Аппарат Министра юстиции Российской Федерации\nУправление делами\nКадровая служба', inline: false },
+    { name: '3. Правовой блок', value: 'Правовой департамент\nДепартамент международного права\nДепартамент уголовно-правовой политики', inline: false },
+    { name: '4. Административный блок', value: 'Департамент исполнения и контроля\nДепартамент государственной регистрации\nОтдел внутреннего аудита', inline: false },
+    { name: '5. Подразделения поддержки', value: 'Юридическая служба федеральных органов\nУправление документооборота\nОтдел служебных проверок', inline: false }
+  )
+  .setTimestamp();
+
+const buildHelpEmbed = () => new EmbedBuilder()
+  .setColor(botColor)
+  .setTitle('Справка по системе Минюста')
+  .setDescription('Нормативное руководство по служебным операциям и структуре ведомства.')
+  .addFields(
+    { name: 'Основные команды', value: '/minjust-help\n/minjust-structure\n/minjust-profile\n/minjust-status\n/minjust-balance\n/minjust-rank\n/minjust-position\n/minjust-config', inline: false },
+    { name: 'Структура ведомства', value: DEPARTMENTS.slice(0, 6).map((item, idx) => `${idx + 1}. ${item}`).join('\n'), inline: false },
+    { name: 'Классные чины', value: RANKS.slice(0, 6).map((item, idx) => `${idx + 1}. ${item}`).join('\n') + '\n…', inline: true },
+    { name: 'Должности', value: POSITIONS.slice(0, 8).map((item, idx) => `${idx + 1}. ${item}`).join('\n') + '\n…', inline: true },
+    { name: 'Примечание', value: 'Команды для должностных лиц и администраторов доступны при наличии полномочий или роли администратора.', inline: false }
+  )
+  .setFooter({ text: 'Министерство юстиции Российской Федерации — служебный регламент' })
+  .setTimestamp();
+
 client.once(Events.ClientReady, () => {
   console.log(`Бот запущен: ${client.user.tag}`);
   client.user.setPresence({
@@ -97,7 +124,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
   const channel = member.guild.channels.cache.get(config.welcomeChannelId) || await member.guild.channels.fetch(config.welcomeChannelId).catch(() => null);
   if (!channel || !channel.isTextBased()) return;
 
-  const welcomeText = config.welcomeMessage || 'Добро пожаловать в Министерство юстиции Российской Федерации.';
+  const welcomeText = config.welcomeMessage || 'Добро пожаловать в Министерство юстиции Российской Федерации. Ваша служба начинается с соблюдения регламента ведомства.';
 
   await channel.send({
     content: `${member.toString()} ${welcomeText}`
@@ -110,24 +137,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
   const { commandName, guild } = interaction;
 
   if (commandName === 'minjust-help') {
-    const embed = new EmbedBuilder()
-      .setColor(botColor)
-      .setTitle('Министерство юстиции Российской Федерации')
-      .setDescription('Служебная справка по системе ведомственного учёта и кадрового управления.')
-      .addFields(
-        { name: '/minjust-balance show', value: 'Проверить текущий баланс баллов сотрудника.' },
-        { name: '/minjust-balance add', value: 'Выдать баллы сотруднику.' },
-        { name: '/minjust-balance remove', value: 'Снять баллы с сотрудника.' },
-        { name: '/minjust-balance set', value: 'Установить точный баланс.' },
-        { name: '/minjust-rank assign', value: 'Назначить классный чин.' },
-        { name: '/minjust-position assign', value: 'Назначить должность.' },
-        { name: '/minjust-config view', value: 'Показать параметры ведомства.' },
-        { name: '/minjust-profile', value: 'Показать служебную карточку сотрудника.' }
-      )
-      .setFooter({ text: 'Руководство по служебной дисциплине и ведомственному учёту' })
-      .setTimestamp();
+    await interaction.reply({ embeds: [buildHelpEmbed()], ephemeral: true });
+    return;
+  }
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+  if (commandName === 'minjust-structure') {
+    await interaction.reply({ embeds: [buildStructureEmbed()] });
     return;
   }
 
@@ -461,6 +476,7 @@ module.exports = {
   client,
   RANKS,
   POSITIONS,
+  DEPARTMENTS,
   hasAdminAccess,
   ensureRole
 };
